@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Deepfake Detection</h1>
+        <p class="subtitle">Advanced AI-powered facial authenticity verification</p>
+
+        <!-- <div class="warning">
+            ⚠️ <strong>Frontend Demo Only:</strong> This interface is not connected to the deepfake detection backend. 
+            No actual analysis will be performed. This is for UI/UX demonstration purposes only.
+        </div>-->
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Drop your image here or click to browse</div>
+            <div class="upload-subtext">Supports JPG, PNG, BMP formats</div>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+
+        <button class="btn" id="analyzeBtn" disabled>Analyze Image</button>
+        <button class="btn" id="clearBtn">Clear</button>
+
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Analyzing image...</p>
+        </div>
+
+        <div id="imagePreview"></div>
+        <div id="resultArea" class="result-area"></div>
+
+        <div class="features">
+            <h3>System Features</h3>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <h4>🎯 Dual-Stream Analysis</h4>
+                    <p>Combines spatial and frequency domain processing for comprehensive analysis</p>
+                </div>
+                <div class="feature-item">
+                    <h4>🤖 MTCNN Preprocessing</h4>
+                    <p>Advanced face detection and alignment using Multi-task CNN</p>
+                </div>
+                <div class="feature-item">
+                    <h4>🧠 Deep Learning</h4>
+                    <p>DenseNet121 + Transformer architecture for pattern recognition</p>
+                </div>
+                <div class="feature-item">
+                    <h4>⚡ Real-time Processing</h4>
+                    <p>Fast analysis with optimized neural network pipeline</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
