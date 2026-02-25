@@ -1,0 +1,211 @@
+import cv2
+import numpy as np
+from mtcnn import MTCNN
+
+
+def load_image(path):
+    img = cv2.imread(path)
+    if img is None:
+        raise ValueError(f"Image not found at {path}")
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return img
+
+
+def safe_crop(image, x, y, w, h):
+    h_img, w_img, _ = image.shape
+
+    x = max(0, x)
+    y = max(0, y)
+    w = min(w, w_img - x)
+    h = min(h, h_img - y)
+
+    if w <= 0 or h <= 0:
+        return None
+
+    return image[y:y+h, x:x+w]
+
+
+
+detector = MTCNN()
+
+def detect_and_crop_faces(image):
+    faces = detector.detect_faces(image)
+    results = []
+
+    for face_data in faces:
+        x, y, w, h = face_data["box"]
+        landmarks = face_data["keypoints"]
+
+        face = safe_crop(image, x, y, w, h)
+        if face is None:
+            continue
+
+        results.append({
+            "face": face,
+            "box": (x, y, w, h),
+            "landmarks": landmarks
+        })
+
+    return results
+
+def align_face(face, landmarks, box):
+    x, y, _, _ = box
+
+    left_eye = (
+        landmarks["left_eye"][0] - x,
+        landmarks["left_eye"][1] - y
+    )
+    right_eye = (
+        landmarks["right_eye"][0] - x,
+        landmarks["right_eye"][1] - y
+    )
+
+    dx = right_eye[0] - left_eye[0]
+    dy = right_eye[1] - left_eye[1]
+    angle = np.degrees(np.arctan2(dy, dx))
+
+    center = (face.shape[1] // 2, face.shape[0] // 2)
+    M = cv2.getRotationMatrix2D(center, angle, 1.0)
+
+    aligned = cv2.warpAffine(face, M, (face.shape[1], face.shape[0]))
+    return aligned
+
+
+def resize_and_normalize(face, size=224):
+    face = cv2.resize(face, (size, size))
+    face = face.astype(np.float32) / 255.0
+    return face
+
+
+
+def spatial_preprocess(face):
+    return resize_and_normalize(face)  # (224,224,3)
+
+def frequency_preprocess(face, size=224):
+    face = resize_and_normalize(face, size)
+
+    gray = cv2.cvtColor((face * 255).astype(np.uint8), cv2.COLOR_RGB2GRAY)
+    gray = gray.astype(np.float32)
+
+    dct = cv2.dct(gray)
+    dct = np.log(np.abs(dct) + 1e-8)
+
+    dct = (dct - dct.min()) / (dct.max() - dct.min() + 1e-8)
+    return dct[..., np.newaxis].astype(np.float32)  # (224,224,1)
+
+def run_preprocessing_multi(image_path):
+    image = load_image(image_path)
+
+    faces = detect_and_crop_faces(image)
+
+    spatial_outputs = []
+    freq_outputs = []
+    meta = []
+
+    for f in faces:
+        face = f["face"]
+
+        aligned = align_face(face, f["landmarks"], f["box"])
+
+        spatial_outputs.append(spatial_preprocess(aligned))
+        freq_outputs.append(frequency_preprocess(aligned))
+
+        meta.append({
+            "box": f["box"],
+            "landmarks": f["landmarks"]
+        })
+
+    if len(spatial_outputs) == 0:
+        return None, None, None
+
+    return (
+        np.stack(spatial_outputs),
+        np.stack(freq_outputs),
+        meta
+    )
+
+def run_preprocessing_video(
+    video_path,
+    frame_interval=5,
+    max_frames=None
+):
+    cap = cv2.VideoCapture(video_path)
+
+    if not cap.isOpened():
+        raise ValueError(f"Cannot open video: {video_path}")
+
+    spatial_all = []
+    freq_all = []
+    meta_all = []
+
+    frame_idx = 0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Process every nth frame (important for speed)
+        if frame_idx % frame_interval != 0:
+            frame_idx += 1
+            continue
+
+        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        faces = detect_and_crop_faces(frame_rgb)
+
+        for f in faces:
+            aligned = align_face(f["face"], f["landmarks"], f["box"])
+
+            spatial_all.append(spatial_preprocess(aligned))
+            freq_all.append(frequency_preprocess(aligned))
+            meta_all.append({
+                "frame": frame_idx,
+                "box": f["box"],
+                "landmarks": f["landmarks"]
+            })
+
+        frame_idx += 1
+
+        if max_frames and frame_idx >= max_frames:
+            break
+
+    cap.release()
+
+    if len(spatial_all) == 0:
+        return None, None, None
+
+    return (
+        np.stack(spatial_all),
+        np.stack(freq_all),
+        meta_all
+    )
+
+import os
+
+def run_preprocessing_media(
+    media_path,
+    frame_interval=5,
+    max_frames=None
+):
+    ext = os.path.splitext(media_path)[1].lower()
+
+    image_exts = {".jpg", ".jpeg", ".png", ".bmp"}
+    video_exts = {".mp4", ".avi", ".mov", ".mkv"}
+
+    # ---------------- IMAGE ----------------
+    if ext in image_exts:
+        return run_preprocessing_multi(media_path)
+
+    # ---------------- VIDEO ----------------
+    elif ext in video_exts:
+        return run_preprocessing_video(
+            media_path,
+            frame_interval=frame_interval,
+            max_frames=max_frames
+        )
+
+    else:
+        raise ValueError(f"Unsupported file type: {ext}")
+
+  this is inside preprocess.py
