@@ -4,7 +4,19 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import Dataset, DataLoader
-from preprocessing.preprocess import run_preprocessing_media
+import pandas as pd
+
+try:
+    from preprocessing.preprocess import run_preprocessing_media
+except ModuleNotFoundError:
+    import sys
+    from pathlib import Path
+
+    project_root = Path(__file__).resolve().parents[1]
+    if str(project_root) not in sys.path:
+        sys.path.insert(0, str(project_root))
+
+    from preprocessing.preprocess import run_preprocessing_media
 
 
 # ==========================
@@ -88,34 +100,45 @@ def extract_vectors(model, loader, device):
 # MAIN FUNCTION YOU CALL
 # ==========================
 
-def train_frequency_model(data_folder, epochs=10):
+def train_frequency_model(csv_path, epochs=10):
+
+    df = pd.read_csv(csv_path)
 
     freq_all = []
+    labels_all = []
 
-    for file in os.listdir(data_folder):
-        path = os.path.join(data_folder,file)
+    for _, row in df.iterrows():
 
-        spatial,freq,_ = run_preprocessing_media(path)
+        path = row["video_path"]
+        label = row["label"]
+
+        spatial, freq, _ = run_preprocessing_media(path)
 
         if freq is not None:
             freq_all.append(freq)
+            labels_all.extend([label]*len(freq))
 
-    freq_np = np.concatenate(freq_all,axis=0)
-
-    labels = np.zeros(len(freq_np),dtype=np.int64)
+    freq_np = np.concatenate(freq_all, axis=0)
+    labels_np = np.array(labels_all)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    ds = FrequencyDataset(freq_np,labels)
-    loader = DataLoader(ds,batch_size=16,shuffle=True)
+    ds = FrequencyDataset(freq_np, labels_np)
+    loader = DataLoader(ds, batch_size=16, shuffle=True)
 
-    model = FrequencyCNN(num_classes=1).to(device)
-    opt = torch.optim.Adam(model.parameters(),lr=1e-3)
+    model = FrequencyCNN(num_classes=2).to(device)
+    opt = torch.optim.Adam(model.parameters(), lr=1e-3)
 
     for e in range(epochs):
-        loss = train_one_epoch(model,loader,opt,device)
+        loss = train_one_epoch(model, loader, opt, device)
         print(f"Epoch {e+1}: {loss:.4f}")
 
-    vectors = extract_vectors(model,loader,device)
+    vectors = extract_vectors(model, loader, device)
 
     return vectors, model
+
+if __name__ == "__main__":
+
+    vectors, _ = train_frequency_model("videos.csv", epochs=10)
+
+    print(f"Frequency vectors shape: {vectors.shape}")

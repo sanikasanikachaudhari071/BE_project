@@ -59,5 +59,12 @@ logs/
 # Temporary files
 *.tmp
 *.temp
+
+dataset/
+frames/
+*.mp4
+*.avi
+*.mkv
+videos.csv
 =======
 
