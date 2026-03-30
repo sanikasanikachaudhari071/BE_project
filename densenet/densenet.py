@@ -46,7 +46,7 @@ class SpatialDenseNet(nn.Module):
 
 # ==========================
 # Feature Extraction
-
+# ==========================
 
 @torch.no_grad()
 def get_spatial_vectors(spatial_np, model, device):
@@ -63,3 +63,4 @@ def get_spatial_vectors(spatial_np, model, device):
         vecs.append(z.cpu())
 
     return torch.cat(vecs)
+
