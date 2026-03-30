@@ -248,8 +248,9 @@ for i, row in df.iterrows():
 
     spatial, freq, _ = run_preprocessing_media(path)
 
-    if spatial is None or freq is None:
-        print("Skipped (no valid faces)")
+# 🔥 FILTER BAD DATA
+    if spatial is None or freq is None or len(spatial) < 5:
+        print("Skipped (too few faces)")
         continue
 
     # -------- SPATIAL --------
@@ -285,10 +286,15 @@ final_freq, _ = get_frequency_vectors(
     freq_np,
     labels_np,
     device,
-    epochs=3
+    epochs=10
 )
 
 print("Frequency:", final_freq.shape)
+# 🔥 NORMALIZE FEATURES
+import torch.nn.functional as F
+
+final_spatial = F.normalize(final_spatial, dim=1)
+final_freq = F.normalize(final_freq, dim=1)
 
 # ==========================
 # 🔥 FEATURE BALANCING (VERY IMPORTANT)
@@ -346,7 +352,8 @@ test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test), batch_size=32
 model = FusionTransformer().to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)   # 🔥 lower LR
-criterion = nn.BCEWithLogitsLoss()
+pos_weight = torch.tensor([1.5]).to(device)   # 🔥 adjust if needed
+criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
 EPOCHS = 10   # 🔥 more training
 
@@ -401,5 +408,5 @@ print("F1 Score :", f1_score(all_true, all_preds, zero_division=0))
 # ==========================
 # SAVE MODEL
 # ==========================
-torch.save(model.state_dict(), "deepfake_model.pth")
-print("\nModel saved successfully!")
+# torch.save(model.state_dict(), "deepfake_model.pth")
+# print("\nModel saved successfully!")
