@@ -185,7 +185,6 @@
 # torch.save(model.state_dict(), "deepfake_model.pth")
 # print("\nModel saved as deepfake_model.pth")
 
-
 import pandas as pd
 import torch
 import numpy as np
@@ -216,16 +215,21 @@ else:
 
 df = pd.read_csv(csv_path)
 
-# 🔥 LIMIT DATASET (VERY IMPORTANT)
-df_fake = df[df["label"] == 1].sample(75)
-df_real = df[df["label"] == 0].sample(75)
-df = pd.concat([df_fake, df_real])
+# ==========================
+# 🔥 BALANCE VIDEO DATASET
+# ==========================
+df_fake = df[df["label"] == 1].sample(75, random_state=42)
+df_real = df[df["label"] == 0].sample(75, random_state=42)
+df = pd.concat([df_fake, df_real]).sample(frac=1, random_state=42).reset_index(drop=True)
 
 # Fix paths
 df["video_path"] = df["video_path"].apply(
     lambda x: base_path + x
 )
 
+# ==========================
+# MODELS
+# ==========================
 spatial_model = SpatialDenseNet().to(device)
 
 all_spatial = []
@@ -260,49 +264,66 @@ for i, row in df.iterrows():
 
 
 # ==========================
-# CHECK IF ANY DATA EXISTS
+# CHECK DATA
 # ==========================
 if len(all_spatial) == 0:
-    raise ValueError("No valid data processed. Check preprocessing.")
-
+    raise ValueError("No valid data processed.")
 
 # ==========================
-# STACK SPATIAL
+# STACK FEATURES
 # ==========================
 final_spatial = torch.cat(all_spatial)
 print("Spatial:", final_spatial.shape)
 
-
-# ==========================
-# TRAIN FREQUENCY ONCE
-# ==========================
 freq_np = np.concatenate(all_freq_data)
 labels_np = np.array(all_labels)
 
+# ==========================
+# TRAIN FREQUENCY MODEL
+# ==========================
 final_freq, _ = get_frequency_vectors(
     freq_np,
     labels_np,
     device,
-    epochs=3   # 🔥 reduced for speed
+    epochs=3
 )
 
 print("Frequency:", final_freq.shape)
 
+# ==========================
+# 🔥 FEATURE BALANCING (VERY IMPORTANT)
+# ==========================
+labels = torch.tensor(all_labels)
+
+fake_idx = (labels == 1).nonzero(as_tuple=True)[0]
+real_idx = (labels == 0).nonzero(as_tuple=True)[0]
+
+min_samples = min(len(fake_idx), len(real_idx))
+
+fake_idx = fake_idx[:min_samples]
+real_idx = real_idx[:min_samples]
+
+balanced_idx = torch.cat([fake_idx, real_idx])
+
+final_spatial = final_spatial[balanced_idx]
+final_freq = final_freq[balanced_idx]
+labels = labels[balanced_idx]
+
+print("Balanced samples:", len(labels))
 
 # ==========================
 # TRAIN-TEST SPLIT
 # ==========================
-X_spatial = final_spatial
-X_freq = final_freq
-y = torch.tensor(all_labels, dtype=torch.float32)
-
 Xsp_train, Xsp_test, Xf_train, Xf_test, y_train, y_test = train_test_split(
-    X_spatial, X_freq, y, test_size=0.2, random_state=42
+    final_spatial,
+    final_freq,
+    labels.float(),
+    test_size=0.2,
+    random_state=42
 )
 
-
 # ==========================
-# DATASET + LOADER
+# DATASET
 # ==========================
 class FusionDataset(Dataset):
     def __init__(self, sp, fr, labels):
@@ -316,33 +337,34 @@ class FusionDataset(Dataset):
     def __getitem__(self, idx):
         return self.sp[idx], self.fr[idx], self.labels[idx]
 
-
 train_loader = DataLoader(FusionDataset(Xsp_train, Xf_train, y_train), batch_size=32, shuffle=True)
 test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test), batch_size=32)
 
-
 # ==========================
-# TRAIN TRANSFORMER
+# MODEL
 # ==========================
 model = FusionTransformer().to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)   # 🔥 lower LR
 criterion = nn.BCELoss()
 
-EPOCHS = 5   # 🔥 reduced for testing
+EPOCHS = 10   # 🔥 more training
 
+# ==========================
+# TRAINING
+# ==========================
 for epoch in range(EPOCHS):
 
     model.train()
     total_loss = 0
 
-    for sp, fr, labels in train_loader:
-        sp, fr, labels = sp.to(device), fr.to(device), labels.to(device)
+    for sp, fr, lbl in train_loader:
+        sp, fr, lbl = sp.to(device), fr.to(device), lbl.to(device)
 
         optimizer.zero_grad()
 
         outputs = model(sp, fr).squeeze()
-        loss = criterion(outputs, labels)
+        loss = criterion(outputs, lbl)
 
         loss.backward()
         optimizer.step()
@@ -350,7 +372,6 @@ for epoch in range(EPOCHS):
         total_loss += loss.item()
 
     print(f"Epoch {epoch+1}: Loss = {total_loss:.4f}")
-
 
 # ==========================
 # EVALUATION
@@ -361,7 +382,7 @@ all_preds = []
 all_true = []
 
 with torch.no_grad():
-    for sp, fr, labels in test_loader:
+    for sp, fr, lbl in test_loader:
 
         sp, fr = sp.to(device), fr.to(device)
 
@@ -369,18 +390,16 @@ with torch.no_grad():
         preds = (outputs > 0.5).cpu().numpy()
 
         all_preds.extend(preds)
-        all_true.extend(labels.numpy())
-
+        all_true.extend(lbl.numpy())
 
 print("\n===== Evaluation =====")
 print("Accuracy :", accuracy_score(all_true, all_preds))
-print("Precision:", precision_score(all_true, all_preds))
-print("Recall   :", recall_score(all_true, all_preds))
-print("F1 Score :", f1_score(all_true, all_preds))
-
+print("Precision:", precision_score(all_true, all_preds, zero_division=0))
+print("Recall   :", recall_score(all_true, all_preds, zero_division=0))
+print("F1 Score :", f1_score(all_true, all_preds, zero_division=0))
 
 # ==========================
 # SAVE MODEL
 # ==========================
 torch.save(model.state_dict(), "deepfake_model.pth")
-print("\nModel saved as deepfake_model.pth")
+print("\nModel saved successfully!")
