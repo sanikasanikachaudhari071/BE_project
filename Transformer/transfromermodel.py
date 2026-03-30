@@ -51,4 +51,4 @@ class FusionTransformer(nn.Module):
         # Classification
         out = self.classifier(x)
 
-        return torch.sigmoid(out)
+        return out

@@ -346,7 +346,7 @@ test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test), batch_size=32
 model = FusionTransformer().to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)   # 🔥 lower LR
-criterion = nn.BCELoss()
+criterion = nn.BCEWithLogitsLoss()
 
 EPOCHS = 10   # 🔥 more training
 
@@ -387,7 +387,7 @@ with torch.no_grad():
         sp, fr = sp.to(device), fr.to(device)
 
         outputs = model(sp, fr).squeeze()
-        preds = (outputs > 0.5).cpu().numpy()
+        preds = (torch.sigmoid(outputs) > 0.5).cpu().numpy()
 
         all_preds.extend(preds)
         all_true.extend(lbl.numpy())
