@@ -253,15 +253,30 @@ for i, row in df.iterrows():
         print("Skipped (too few faces)")
         continue
 
-    # -------- SPATIAL --------
+# -------- SPATIAL --------
     spatial_vec = get_spatial_vectors(spatial, spatial_model, device)
+
+# -------- FREQUENCY --------
+    labels_np = np.array([label] * len(freq))
+
+    freq_vec, _ = get_frequency_vectors(
+        freq,
+        labels_np,
+        device,
+        epochs=3
+    )
+
+
+# 🔥 ALIGN LENGTHS
+    min_len = min(len(spatial_vec), len(freq_vec))
+
+    spatial_vec = spatial_vec[:min_len]
+    freq_vec = freq_vec[:min_len]
+
+# -------- STORE --------
     all_spatial.append(spatial_vec)
-
-    # -------- FREQUENCY --------
-    all_freq_data.append(freq)
-
-    # -------- LABELS --------
-    all_labels.extend([label] * len(spatial_vec))
+    all_freq_data.append(freq_vec)
+    all_labels.extend([label] * min_len)
 
 
 # ==========================
@@ -274,10 +289,7 @@ if len(all_spatial) == 0:
 # STACK FEATURES
 # ==========================
 final_spatial = torch.cat(all_spatial)
-print("Spatial:", final_spatial.shape)
-
-freq_np = np.concatenate(all_freq_data)
-labels_np = np.array(all_labels)
+final_freq = torch.cat(all_freq_data)
 
 # ==========================
 # TRAIN FREQUENCY MODEL
