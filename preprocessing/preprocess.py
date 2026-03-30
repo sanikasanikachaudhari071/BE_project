@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-from mtcnn import MTCNN
 import os
 
 
@@ -35,28 +34,31 @@ def safe_crop(image, x, y, w, h):
 # ==========================
 # FACE DETECTOR
 # ==========================
-detector = MTCNN()
-
-
+face_cascade = cv2.CascadeClassifier(
+    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
+)
 def detect_and_crop_faces(image):
-    try:
-        faces = detector.detect_faces(image)
-    except Exception as e:
-        print("MTCNN error (inner), skipping frame:", e)
-        return []
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
-    if faces is None or len(faces) == 0:
-        return []
+    faces = face_cascade.detectMultiScale(
+        gray,
+        scaleFactor=1.1,
+        minNeighbors=5,
+        minSize=(50, 50)
+    )
 
     results = []
 
-    for face_data in faces:
-        x, y, w, h = face_data["box"]
-        landmarks = face_data["keypoints"]
-
+    for (x, y, w, h) in faces:
         face = safe_crop(image, x, y, w, h)
         if face is None:
             continue
+
+        # fake landmarks (for compatibility)
+        landmarks = {
+            "left_eye": (x + w//3, y + h//3),
+            "right_eye": (x + 2*w//3, y + h//3)
+        }
 
         results.append({
             "face": face,
@@ -65,7 +67,6 @@ def detect_and_crop_faces(image):
         })
 
     return results
-
 
 # ==========================
 # ALIGN FACE
