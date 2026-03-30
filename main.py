@@ -249,7 +249,7 @@ for i, row in df.iterrows():
     spatial, freq, _ = run_preprocessing_media(path)
 
 # 🔥 FILTER BAD DATA
-    if spatial is None or freq is None or len(spatial) < 5:
+    if spatial is None or freq is None or len(spatial) == 0:
         print("Skipped (too few faces)")
         continue
 
