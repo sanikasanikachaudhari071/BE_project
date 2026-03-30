@@ -169,7 +169,7 @@ def run_preprocessing_multi(image_path):
 # ==========================
 # VIDEO PREPROCESS
 # ==========================
-def run_preprocessing_video(video_path, frame_interval=5, max_frames=20):
+def run_preprocessing_video(video_path, frame_interval=10, max_frames=10):
 
     cap = cv2.VideoCapture(video_path)
 
