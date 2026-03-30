@@ -98,7 +98,6 @@ def train_one_epoch(model, loader, optimizer, device):
 # Feature Extraction
 # ==========================
 
-@torch.no_grad()
 def get_frequency_vectors(freq_np, labels_np, device, epochs=5):
 
     dataset = FrequencyDataset(freq_np, labels_np)
@@ -112,13 +111,14 @@ def get_frequency_vectors(freq_np, labels_np, device, epochs=5):
         loss = train_one_epoch(model, loader, optimizer, device)
         print(f"[Freq] Epoch {e+1}: {loss:.4f}")
 
-    # Extract embeddings
+    # Extract embeddings (no grad needed here)
     model.eval()
     vecs = []
 
-    for x, _ in loader:
-        x = x.to(device)
-        _, z = model(x)
-        vecs.append(z.cpu())
+    with torch.no_grad():
+        for x, _ in loader:
+            x = x.to(device)
+            _, z = model(x)
+            vecs.append(z.cpu())
 
     return torch.cat(vecs), model
