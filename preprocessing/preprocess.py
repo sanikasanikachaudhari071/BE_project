@@ -81,6 +81,18 @@ def resize_and_normalize(face, size=224):
 def spatial_preprocess(face):
     return resize_and_normalize(face)  # (224,224,3)
 
+# def frequency_preprocess(face, size=224):
+#     face = resize_and_normalize(face, size)
+
+#     gray = cv2.cvtColor((face * 255).astype(np.uint8), cv2.COLOR_RGB2GRAY)
+#     gray = gray.astype(np.float32)
+
+#     dct = cv2.dct(gray)
+#     dct = np.log(np.abs(dct) + 1e-8)
+
+#     dct = (dct - dct.min()) / (dct.max() - dct.min() + 1e-8)
+#     return dct[..., np.newaxis].astype(np.float32)  # (224,224,1)
+
 def frequency_preprocess(face, size=224):
     face = resize_and_normalize(face, size)
 
@@ -88,10 +100,14 @@ def frequency_preprocess(face, size=224):
     gray = gray.astype(np.float32)
 
     dct = cv2.dct(gray)
+
+    dct[:20, :20] = 0   # remove low-frequency
+
     dct = np.log(np.abs(dct) + 1e-8)
 
     dct = (dct - dct.min()) / (dct.max() - dct.min() + 1e-8)
-    return dct[..., np.newaxis].astype(np.float32)  # (224,224,1)
+
+    return dct[..., np.newaxis].astype(np.float32)
 
 def run_preprocessing_multi(image_path):
     image = load_image(image_path)
