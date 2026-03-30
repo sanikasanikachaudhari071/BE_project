@@ -224,4 +224,3 @@ def run_preprocessing_media(
     else:
         raise ValueError(f"Unsupported file type: {ext}")
 
-  this is inside preprocess.py
