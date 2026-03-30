@@ -217,7 +217,9 @@ else:
 df = pd.read_csv(csv_path)
 
 # 🔥 LIMIT DATASET (VERY IMPORTANT)
-df = df.sample(50, random_state=42)
+df_fake = df[df["label"] == 1].sample(75)
+df_real = df[df["label"] == 0].sample(75)
+df = pd.concat([df_fake, df_real])
 
 # Fix paths
 df["video_path"] = df["video_path"].apply(
