@@ -349,7 +349,20 @@ test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test), batch_size=32
 # ==========================
 # MODEL
 # ==========================
-model = FusionTransformer().to(device)
+class SimpleFusion(nn.Module):
+    def __init__(self):
+        super().__init__()
+
+        self.classifier = nn.Sequential(
+            nn.Linear(256, 64),
+            nn.ReLU(),
+            nn.Linear(64, 1)
+        )
+
+    def forward(self, sp, fr):
+        x = torch.cat([sp, fr], dim=1)
+        return self.classifier(x)
+model = SimpleFusion().to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-5)   # 🔥 lower LR
 pos_weight = torch.tensor([1.5]).to(device)   # 🔥 adjust if needed
