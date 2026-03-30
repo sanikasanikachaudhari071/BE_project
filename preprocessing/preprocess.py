@@ -1,8 +1,12 @@
 import cv2
 import numpy as np
 from mtcnn import MTCNN
+import os
 
 
+# ==========================
+# LOAD IMAGE
+# ==========================
 def load_image(path):
     img = cv2.imread(path)
     if img is None:
@@ -11,6 +15,9 @@ def load_image(path):
     return img
 
 
+# ==========================
+# SAFE CROP
+# ==========================
 def safe_crop(image, x, y, w, h):
     h_img, w_img, _ = image.shape
 
@@ -25,11 +32,22 @@ def safe_crop(image, x, y, w, h):
     return image[y:y+h, x:x+w]
 
 
-
+# ==========================
+# FACE DETECTOR
+# ==========================
 detector = MTCNN()
 
+
 def detect_and_crop_faces(image):
-    faces = detector.detect_faces(image)
+    try:
+        faces = detector.detect_faces(image)
+    except Exception as e:
+        print("MTCNN error (inner), skipping frame:", e)
+        return []
+
+    if faces is None or len(faces) == 0:
+        return []
+
     results = []
 
     for face_data in faces:
@@ -48,6 +66,10 @@ def detect_and_crop_faces(image):
 
     return results
 
+
+# ==========================
+# ALIGN FACE
+# ==========================
 def align_face(face, landmarks, box):
     x, y, _, _ = box
 
@@ -71,28 +93,25 @@ def align_face(face, landmarks, box):
     return aligned
 
 
+# ==========================
+# RESIZE + NORMALIZE
+# ==========================
 def resize_and_normalize(face, size=224):
     face = cv2.resize(face, (size, size))
     face = face.astype(np.float32) / 255.0
     return face
 
 
-
+# ==========================
+# SPATIAL
+# ==========================
 def spatial_preprocess(face):
-    return resize_and_normalize(face)  # (224,224,3)
+    return resize_and_normalize(face)
 
-# def frequency_preprocess(face, size=224):
-#     face = resize_and_normalize(face, size)
 
-#     gray = cv2.cvtColor((face * 255).astype(np.uint8), cv2.COLOR_RGB2GRAY)
-#     gray = gray.astype(np.float32)
-
-#     dct = cv2.dct(gray)
-#     dct = np.log(np.abs(dct) + 1e-8)
-
-#     dct = (dct - dct.min()) / (dct.max() - dct.min() + 1e-8)
-#     return dct[..., np.newaxis].astype(np.float32)  # (224,224,1)
-
+# ==========================
+# FREQUENCY (DCT)
+# ==========================
 def frequency_preprocess(face, size=224):
     face = resize_and_normalize(face, size)
 
@@ -101,7 +120,8 @@ def frequency_preprocess(face, size=224):
 
     dct = cv2.dct(gray)
 
-    dct[:20, :20] = 0   # remove low-frequency
+    # remove low-frequency (focus on artifacts)
+    dct[:20, :20] = 0
 
     dct = np.log(np.abs(dct) + 1e-8)
 
@@ -109,6 +129,10 @@ def frequency_preprocess(face, size=224):
 
     return dct[..., np.newaxis].astype(np.float32)
 
+
+# ==========================
+# IMAGE PREPROCESS
+# ==========================
 def run_preprocessing_multi(image_path):
     image = load_image(image_path)
 
@@ -140,15 +164,17 @@ def run_preprocessing_multi(image_path):
         meta
     )
 
-def run_preprocessing_video(
-    video_path,
-    frame_interval=5,
-    max_frames=None
-):
+
+# ==========================
+# VIDEO PREPROCESS
+# ==========================
+def run_preprocessing_video(video_path, frame_interval=5, max_frames=20):
+
     cap = cv2.VideoCapture(video_path)
 
     if not cap.isOpened():
-        raise ValueError(f"Cannot open video: {video_path}")
+        print(f"Skipping bad video: {video_path}")
+        return None, None, None
 
     spatial_all = []
     freq_all = []
@@ -161,20 +187,36 @@ def run_preprocessing_video(
         if not ret:
             break
 
-        # Process every nth frame (important for speed)
         if frame_idx % frame_interval != 0:
             frame_idx += 1
             continue
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        faces = detect_and_crop_faces(frame_rgb)
+        # ✅ skip tiny frames
+        if frame_rgb.shape[0] < 50 or frame_rgb.shape[1] < 50:
+            frame_idx += 1
+            continue
+
+        # ✅ FULL MTCNN PROTECTION
+        try:
+            faces = detect_and_crop_faces(frame_rgb)
+        except Exception as e:
+            print("Skipping frame due to MTCNN crash:", e)
+            frame_idx += 1
+            continue
+
+        # ✅ skip if no faces
+        if len(faces) == 0:
+            frame_idx += 1
+            continue
 
         for f in faces:
             aligned = align_face(f["face"], f["landmarks"], f["box"])
 
             spatial_all.append(spatial_preprocess(aligned))
             freq_all.append(frequency_preprocess(aligned))
+
             meta_all.append({
                 "frame": frame_idx,
                 "box": f["box"],
@@ -197,23 +239,20 @@ def run_preprocessing_video(
         meta_all
     )
 
-import os
 
-def run_preprocessing_media(
-    media_path,
-    frame_interval=5,
-    max_frames=None
-):
+# ==========================
+# MAIN MEDIA FUNCTION
+# ==========================
+def run_preprocessing_media(media_path, frame_interval=5, max_frames=20):
+
     ext = os.path.splitext(media_path)[1].lower()
 
     image_exts = {".jpg", ".jpeg", ".png", ".bmp"}
     video_exts = {".mp4", ".avi", ".mov", ".mkv"}
 
-    # ---------------- IMAGE ----------------
     if ext in image_exts:
         return run_preprocessing_multi(media_path)
 
-    # ---------------- VIDEO ----------------
     elif ext in video_exts:
         return run_preprocessing_video(
             media_path,
@@ -223,4 +262,3 @@ def run_preprocessing_media(
 
     else:
         raise ValueError(f"Unsupported file type: {ext}")
-
