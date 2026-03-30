@@ -35,6 +35,11 @@ class SpatialDenseNet(nn.Module):
         self.backbone = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
         self.backbone.classifier = nn.Identity()
 
+        # 🔥 FREEZE BACKBONE
+        for param in self.backbone.parameters():
+            param.requires_grad = False
+
+        # 🔥 TRAIN ONLY EMBEDDING LAYER
         self.embed = nn.Linear(1024, emb_dim)
 
     def forward(self, x):
@@ -42,13 +47,9 @@ class SpatialDenseNet(nn.Module):
         z = self.embed(f)
         z = F.normalize(z, p=2, dim=1)
         return z
-
-
 # ==========================
 # Feature Extraction
 # ==========================
-
-@torch.no_grad()
 def get_spatial_vectors(spatial_np, model, device):
 
     dataset = SpatialDataset(spatial_np)
@@ -60,7 +61,6 @@ def get_spatial_vectors(spatial_np, model, device):
     for x in loader:
         x = x.to(device)
         z = model(x)
-        vecs.append(z.cpu())
+        vecs.append(z.detach().cpu())   # 🔥 detach instead
 
     return torch.cat(vecs)
-
