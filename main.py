@@ -17,7 +17,23 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # ==========================
 # LOAD CSV
 # ==========================
-df = pd.read_csv("videos.csv")
+import os
+
+if os.path.exists("/content/drive"):
+    # Running in Colab
+    csv_path = "/content/drive/MyDrive/videos.csv"
+    base_path = "/content/drive/MyDrive/"
+else:
+    # Running locally
+    csv_path = "videos.csv"
+    base_path = ""
+
+df = pd.read_csv(csv_path)
+
+# Fix paths
+df["video_path"] = df["video_path"].apply(
+    lambda x: base_path + x
+)
 
 spatial_model = SpatialDenseNet().to(device)
 
