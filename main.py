@@ -6,11 +6,21 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from torch.utils.data import Dataset, DataLoader
 import os
+import random
 
 from preprocessing.preprocess import run_preprocessing_media
 from densenet.densenet import SpatialDenseNet, get_spatial_vectors
 from frequencycnn.frequency import get_frequency_vectors, extract_frequency_features
 from Transformer.transfromermodel import FusionTransformer
+
+
+# Provide strict reproducibility
+SEED = 42
+random.seed(SEED)
+np.random.seed(SEED)
+torch.manual_seed(SEED)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed_all(SEED)
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
