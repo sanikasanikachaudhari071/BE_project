@@ -31,6 +31,7 @@ class FusionTransformer(nn.Module):
         self.classifier = nn.Sequential(
             nn.Linear(emb_dim, 64),
             nn.ReLU(),
+            nn.Dropout(0.3),
             nn.Linear(64, 1)
         )
 

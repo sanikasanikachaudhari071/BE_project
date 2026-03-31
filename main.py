@@ -50,14 +50,13 @@ df["video_path"] = df["video_path"].apply(lambda x: base_path + x)
 # ==========================
 # SPLIT AT VIDEO LEVEL (LEAKAGE FIX)
 # ==========================
-# This prevents frames from the same video ending up in both Train and Test
-df_train, df_test = train_test_split(df, test_size=0.2, random_state=42, stratify=df["label"])
+# Splitting Test set (20%)
+df_train_full, df_test = train_test_split(df, test_size=0.2, random_state=42, stratify=df["label"])
+# Splitting Validation set from Train set (10% of Train)
+df_train, df_val = train_test_split(df_train_full, test_size=0.1, random_state=42, stratify=df_train_full["label"])
 
 spatial_model = SpatialDenseNet().to(device)
 
-# all_spatial = []
-# all_freq_data = []
-# all_labels = []
 
 # ==========================
 # PROCESSING UTILS
@@ -68,14 +67,12 @@ def process_dataframe(df_subset, sp_model, dev):
     all_labels = []
 
     for i, row in df_subset.iterrows():
-        print(f"Processing:", row["video_path"])
         path = row["video_path"]
         label = row["label"]
 
         spatial, freq, _ = run_preprocessing_media(path)
 
         if spatial is None or freq is None or len(spatial) == 0:
-            print("Skipped (no faces)")
             continue
 
         spatial_vec = get_spatial_vectors(spatial, sp_model, dev)
@@ -87,8 +84,6 @@ def process_dataframe(df_subset, sp_model, dev):
     if len(all_spatial) == 0:
         return None, None, None
 
-    # We must explicitly cast tensors to CPU immediately in loops if we run out of memory, 
-    # but here we cast at concatenation
     return torch.cat(all_spatial), np.concatenate(all_freq_data), torch.tensor(all_labels)
 
 
@@ -111,21 +106,27 @@ def balance_frames(spatial, freq, labels):
 
 
 # ==========================
-# EXTRACT TRAIN & TEST DATA
+# EXTRACT TRAIN, VAL & TEST DATA
 # ==========================
 print("\n--- EXTRACTING TRAIN DATA ---")
 Xsp_train_unbal, Xf_train_unbal, y_train_unbal = process_dataframe(df_train, spatial_model, device)
 
+print("\n--- EXTRACTING VAL DATA ---")
+Xsp_val_unbal, Xf_val_unbal, y_val_unbal = process_dataframe(df_val, spatial_model, device)
+
 print("\n--- EXTRACTING TEST DATA ---")
 Xsp_test_unbal, Xf_test_unbal, y_test_unbal = process_dataframe(df_test, spatial_model, device)
+
 
 # ==========================
 # BALANCE FRAMES
 # ==========================
 Xsp_train, np_f_train, y_train = balance_frames(Xsp_train_unbal, Xf_train_unbal, y_train_unbal)
+Xsp_val, np_f_val, y_val = balance_frames(Xsp_val_unbal, Xf_val_unbal, y_val_unbal)
 Xsp_test, np_f_test, y_test = balance_frames(Xsp_test_unbal, Xf_test_unbal, y_test_unbal)
 
 print(f"\nBalanced Train samples: {len(y_train)}")
+print(f"Balanced Val samples: {len(y_val)}")
 print(f"Balanced Test samples: {len(y_test)}")
 
 
@@ -140,14 +141,13 @@ Xf_train, freq_model = get_frequency_vectors(
     epochs=15
 )
 
-# Use the explicitly extracted function so we don't accidentally train on the test subset
+# Use explicitly extracted function so we don't accidentally train on val/test subsets
+Xf_val = extract_frequency_features(np_f_val, freq_model, device)
 Xf_test = extract_frequency_features(np_f_test, freq_model, device)
-
-print("Train Spatial:", Xsp_train.shape, "Train Freq:", Xf_train.shape)
 
 
 # ==========================
-# DATASET
+# DATASET & DATALOADERS
 # ==========================
 class FusionDataset(Dataset):
     def __init__(self, sp, fr, labels):
@@ -163,45 +163,88 @@ class FusionDataset(Dataset):
 
 
 train_loader = DataLoader(FusionDataset(Xsp_train, Xf_train, y_train.float()), batch_size=32, shuffle=True)
-test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test.float()), batch_size=32)
+val_loader = DataLoader(FusionDataset(Xsp_val, Xf_val, y_val.float()), batch_size=32, shuffle=False)
+test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test.float()), batch_size=32, shuffle=False)
 
 # ==========================
 # FUSION MODEL (TRANSFORMER)
 # ==========================
 model = FusionTransformer().to(device)
 
-# Provided L2 penalty (weight decay) to heavily combat small-dataset overfitting
-optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-4)
+# Updated strictly to 1e-4 based on feedback (more stable learning)
+optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
 criterion = nn.BCEWithLogitsLoss()
 
-EPOCHS = 10
+EPOCHS = 25
+PATIENCE = 5
+best_val_loss = float('inf')
+early_stop_counter = 0
+
 
 # ==========================
-# TRAINING
+# TRAINING WITH EARLY STOPPING
 # ==========================
+print("\n--- TRAINING FUSION MODEL ---")
 for epoch in range(EPOCHS):
 
+    # 1. Training Phase
     model.train()
-    total_loss = 0
+    total_train_loss = 0
 
     for sp, fr, lbl in train_loader:
         sp, fr, lbl = sp.to(device), fr.to(device), lbl.to(device)
 
         optimizer.zero_grad()
-
         outputs = model(sp, fr).squeeze()
+        
+        # Depending on batch size, output might not have rank 1 natively if 1 element
+        if outputs.dim() == 0:
+            outputs = outputs.unsqueeze(0)
+            
         loss = criterion(outputs, lbl)
-
         loss.backward()
         optimizer.step()
 
-        total_loss += loss.item()
+        total_train_loss += loss.item()
+        
+    avg_train_loss = total_train_loss / len(train_loader)
 
-    print(f"Epoch {epoch+1}: Loss = {total_loss/len(train_loader):.4f}")
+    # 2. Validation Phase
+    model.eval()
+    total_val_loss = 0
+    with torch.no_grad():
+        for sp, fr, lbl in val_loader:
+            sp, fr, lbl = sp.to(device), fr.to(device), lbl.to(device)
+            outputs = model(sp, fr).squeeze()
+            if outputs.dim() == 0:
+                outputs = outputs.unsqueeze(0)
+            
+            loss = criterion(outputs, lbl)
+            total_val_loss += loss.item()
+            
+    avg_val_loss = total_val_loss / len(val_loader)
+    
+    print(f"Epoch {epoch+1:02d}: Train Loss = {avg_train_loss:.4f}  |  Val Loss = {avg_val_loss:.4f}")
+
+    # 3. Early Stopping Check
+    if avg_val_loss < best_val_loss:
+        best_val_loss = avg_val_loss
+        early_stop_counter = 0
+        # Save best model to ensure we roll back to best weights!
+        torch.save(model.state_dict(), "deepfake_model.pth")
+    else:
+        early_stop_counter += 1
+        
+    if early_stop_counter >= PATIENCE:
+        print(f"\n[!] Early Stopping Triggered! Validation loss failed to improve for {PATIENCE} epochs.")
+        break
+
 
 # ==========================
-# EVALUATION
+# EVALUATION (ON TEST SET)
 # ==========================
+# Load the strictly absolute best weights from the early stopping mechanism
+model.load_state_dict(torch.load("deepfake_model.pth"))
 model.eval()
 
 all_preds = []
@@ -209,11 +252,14 @@ all_true = []
 
 with torch.no_grad():
     for sp, fr, lbl in test_loader:
-
         sp, fr = sp.to(device), fr.to(device)
-
+        
         outputs = model(sp, fr).squeeze()
-        preds = (torch.sigmoid(outputs) > 0.5).cpu().numpy()
+        if outputs.dim() == 0:
+            outputs = outputs.unsqueeze(0)
+            
+        # Tuned custom threshold to 0.6 per mentorship advice
+        preds = (torch.sigmoid(outputs) > 0.6).cpu().numpy()
 
         all_preds.extend(preds)
         all_true.extend(lbl.numpy())
@@ -224,8 +270,4 @@ print("Precision:", f"{precision_score(all_true, all_preds, zero_division=0) * 1
 print("Recall   :", f"{recall_score(all_true, all_preds, zero_division=0) * 100:.2f}%")
 print("F1 Score :", f"{f1_score(all_true, all_preds, zero_division=0) * 100:.2f}%")
 
-# ==========================
-# SAVE MODEL
-# ==========================
-torch.save(model.state_dict(), "deepfake_model.pth")
-print("\nModel saved successfully!")
+print("\nModel saved and evaluated successfully!")
