@@ -121,3 +121,19 @@ def get_frequency_vectors(freq_np, labels_np, device, epochs=5):
             vecs.append(z.cpu())
 
     return torch.cat(vecs), model
+
+
+def extract_frequency_features(freq_np, model, device):
+    dummy_labels = np.zeros(len(freq_np))
+    dataset = FrequencyDataset(freq_np, dummy_labels)
+    loader = DataLoader(dataset, batch_size=16, shuffle=False)
+    
+    model.eval()
+    vecs = []
+    with torch.no_grad():
+        for x, _ in loader:
+            x = x.to(device)
+            _, z = model(x)
+            vecs.append(z.cpu())
+            
+    return torch.cat(vecs)

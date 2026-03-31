@@ -1,4 +1,3 @@
-
 import pandas as pd
 import torch
 import numpy as np
@@ -6,12 +5,11 @@ import torch.nn as nn
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 from torch.utils.data import Dataset, DataLoader
-import torch.nn.functional as F
 import os
 
 from preprocessing.preprocess import run_preprocessing_media
 from densenet.densenet import SpatialDenseNet, get_spatial_vectors
-from frequencycnn.frequency import get_frequency_vectors
+from frequencycnn.frequency import get_frequency_vectors, extract_frequency_features
 from Transformer.transfromermodel import FusionTransformer
 
 
@@ -30,115 +28,113 @@ else:
 df = pd.read_csv(csv_path)
 
 # ==========================
-# BALANCE DATASET
+# BALANCE VIDEO DATASET
 # ==========================
 df_fake = df[df["label"] == 1].sample(100, random_state=42)
 df_real = df[df["label"] == 0].sample(100, random_state=42)
 df = pd.concat([df_fake, df_real]).sample(frac=1, random_state=42).reset_index(drop=True)
 
-# Fix paths
 df["video_path"] = df["video_path"].apply(lambda x: base_path + x)
 
+
 # ==========================
-# MODELS
+# SPLIT AT VIDEO LEVEL (LEAKAGE FIX)
 # ==========================
+# This prevents frames from the same video ending up in both Train and Test
+df_train, df_test = train_test_split(df, test_size=0.2, random_state=42, stratify=df["label"])
+
 spatial_model = SpatialDenseNet().to(device)
 
-all_spatial = []
-all_freq_data = []
-all_labels = []
+# all_spatial = []
+# all_freq_data = []
+# all_labels = []
 
 # ==========================
-# LOOP OVER DATA
+# PROCESSING UTILS
 # ==========================
-for i, row in df.iterrows():
+def process_dataframe(df_subset, sp_model, dev):
+    all_spatial = []
+    all_freq_data = []
+    all_labels = []
 
-    print(f"Processing {i+1}/{len(df)}:", row["video_path"])
+    for i, row in df_subset.iterrows():
+        print(f"Processing:", row["video_path"])
+        path = row["video_path"]
+        label = row["label"]
 
-    path = row["video_path"]
-    label = row["label"]
+        spatial, freq, _ = run_preprocessing_media(path)
 
-    spatial, freq, _ = run_preprocessing_media(path)
+        if spatial is None or freq is None or len(spatial) == 0:
+            print("Skipped (no faces)")
+            continue
 
-    if spatial is None or freq is None or len(spatial) == 0:
-        print("Skipped (no faces)")
-        continue
+        spatial_vec = get_spatial_vectors(spatial, sp_model, dev)
 
-    # -------- SPATIAL --------
-    spatial_vec = get_spatial_vectors(spatial, spatial_model, device)
+        all_spatial.append(spatial_vec)
+        all_freq_data.append(freq)
+        all_labels.extend([label] * len(spatial_vec))
 
-    # -------- STORE --------
-    all_spatial.append(spatial_vec)
-    all_freq_data.append(freq)
-    all_labels.extend([label] * len(spatial_vec))
+    if len(all_spatial) == 0:
+        return None, None, None
+
+    # We must explicitly cast tensors to CPU immediately in loops if we run out of memory, 
+    # but here we cast at concatenation
+    return torch.cat(all_spatial), np.concatenate(all_freq_data), torch.tensor(all_labels)
+
+
+def balance_frames(spatial, freq, labels):
+    fake_idx = (labels == 1).nonzero(as_tuple=True)[0]
+    real_idx = (labels == 0).nonzero(as_tuple=True)[0]
+
+    min_samples = min(len(fake_idx), len(real_idx))
+
+    fake_idx = fake_idx[:min_samples]
+    real_idx = real_idx[:min_samples]
+
+    balanced_idx = torch.cat([fake_idx, real_idx])
+    
+    # Shuffle the balanced tensor
+    shuffle_mask = torch.randperm(len(balanced_idx))
+    balanced_idx = balanced_idx[shuffle_mask]
+
+    return spatial[balanced_idx], freq[balanced_idx.numpy()], labels[balanced_idx]
 
 
 # ==========================
-# CHECK DATA
+# EXTRACT TRAIN & TEST DATA
 # ==========================
-if len(all_spatial) == 0:
-    raise ValueError("No valid data processed.")
+print("\n--- EXTRACTING TRAIN DATA ---")
+Xsp_train_unbal, Xf_train_unbal, y_train_unbal = process_dataframe(df_train, spatial_model, device)
+
+print("\n--- EXTRACTING TEST DATA ---")
+Xsp_test_unbal, Xf_test_unbal, y_test_unbal = process_dataframe(df_test, spatial_model, device)
 
 # ==========================
-# STACK SPATIAL
+# BALANCE FRAMES
 # ==========================
-final_spatial = torch.cat(all_spatial)
-print("Spatial:", final_spatial.shape)
+Xsp_train, np_f_train, y_train = balance_frames(Xsp_train_unbal, Xf_train_unbal, y_train_unbal)
+Xsp_test, np_f_test, y_test = balance_frames(Xsp_test_unbal, Xf_test_unbal, y_test_unbal)
+
+print(f"\nBalanced Train samples: {len(y_train)}")
+print(f"Balanced Test samples: {len(y_test)}")
+
 
 # ==========================
-# TRAIN FREQUENCY MODEL (ONCE)
+# TRAIN FREQUENCY MODEL
 # ==========================
-freq_np = np.concatenate(all_freq_data)
-labels_np = np.array(all_labels)
-
-print("Training Frequency Model...")
-
-final_freq, _ = get_frequency_vectors(
-    freq_np,
-    labels_np,
+print("\nTraining Frequency Model on Train Split...")
+Xf_train, freq_model = get_frequency_vectors(
+    np_f_train,
+    y_train.numpy(),
     device,
     epochs=15
 )
 
-print("Frequency:", final_freq.shape)
+# Use the explicitly extracted function so we don't accidentally train on the test subset
+Xf_test = extract_frequency_features(np_f_test, freq_model, device)
 
-# ==========================
-# NORMALIZE FEATURES
-# ==========================
-# final_spatial = F.normalize(final_spatial, dim=1)
-# final_freq = F.normalize(final_freq, dim=1)
+print("Train Spatial:", Xsp_train.shape, "Train Freq:", Xf_train.shape)
 
-# ==========================
-# BALANCE FEATURES
-# ==========================
-labels = torch.tensor(all_labels)
-
-fake_idx = (labels == 1).nonzero(as_tuple=True)[0]
-real_idx = (labels == 0).nonzero(as_tuple=True)[0]
-
-min_samples = min(len(fake_idx), len(real_idx))
-
-fake_idx = fake_idx[:min_samples]
-real_idx = real_idx[:min_samples]
-
-balanced_idx = torch.cat([fake_idx, real_idx])
-
-final_spatial = final_spatial[balanced_idx]
-final_freq = final_freq[balanced_idx]
-labels = labels[balanced_idx]
-
-print("Balanced samples:", len(labels))
-
-# ==========================
-# TRAIN-TEST SPLIT
-# ==========================
-Xsp_train, Xsp_test, Xf_train, Xf_test, y_train, y_test = train_test_split(
-    final_spatial,
-    final_freq,
-    labels.float(),
-    test_size=0.2,
-    random_state=42
-)
 
 # ==========================
 # DATASET
@@ -156,15 +152,16 @@ class FusionDataset(Dataset):
         return self.sp[idx], self.fr[idx], self.labels[idx]
 
 
-train_loader = DataLoader(FusionDataset(Xsp_train, Xf_train, y_train), batch_size=32, shuffle=True)
-test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test), batch_size=32)
+train_loader = DataLoader(FusionDataset(Xsp_train, Xf_train, y_train.float()), batch_size=32, shuffle=True)
+test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test.float()), batch_size=32)
 
 # ==========================
 # FUSION MODEL (TRANSFORMER)
 # ==========================
 model = FusionTransformer().to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
+# Provided L2 penalty (weight decay) to heavily combat small-dataset overfitting
+optimizer = torch.optim.Adam(model.parameters(), lr=3e-4, weight_decay=1e-4)
 criterion = nn.BCEWithLogitsLoss()
 
 EPOCHS = 10
