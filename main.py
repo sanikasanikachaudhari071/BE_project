@@ -40,8 +40,11 @@ df = pd.read_csv(csv_path)
 # ==========================
 # BALANCE VIDEO DATASET
 # ==========================
-df_fake = df[df["label"] == 1].sample(500, random_state=42)
-df_real = df[df["label"] == 0].sample(500, random_state=42)
+# Dynamically scale to use the maximum possible perfectly-balanced subset (e.g. 1500 per class)
+min_class_count = min(len(df[df["label"] == 1]), len(df[df["label"] == 0]))
+
+df_fake = df[df["label"] == 1].sample(min_class_count, random_state=42)
+df_real = df[df["label"] == 0].sample(min_class_count, random_state=42)
 df = pd.concat([df_fake, df_real]).sample(frac=1, random_state=42).reset_index(drop=True)
 
 df["video_path"] = df["video_path"].apply(lambda x: base_path + x)
