@@ -212,10 +212,10 @@ with torch.no_grad():
         all_true.extend(lbl.numpy())
 
 print("\n===== Evaluation =====")
-print("Accuracy :", accuracy_score(all_true, all_preds))
-print("Precision:", precision_score(all_true, all_preds, zero_division=0))
-print("Recall   :", recall_score(all_true, all_preds, zero_division=0))
-print("F1 Score :", f1_score(all_true, all_preds, zero_division=0))
+print("Accuracy :", f"{accuracy_score(all_true, all_preds) * 100:.2f}%")
+print("Precision:", f"{precision_score(all_true, all_preds, zero_division=0) * 100:.2f}%")
+print("Recall   :", f"{recall_score(all_true, all_preds, zero_division=0) * 100:.2f}%")
+print("F1 Score :", f"{f1_score(all_true, all_preds, zero_division=0) * 100:.2f}%")
 
 # ==========================
 # SAVE MODEL

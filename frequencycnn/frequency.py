@@ -31,32 +31,34 @@ class FrequencyCNN(nn.Module):
         super().__init__()
 
         self.features = nn.Sequential(
-            # 224x224
-            nn.Conv2d(1, 32, 5, stride=2, padding=2), # -> 112x112
+
+            # Block 1
+            nn.Conv2d(1, 32, 3, padding=1),
             nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.MaxPool2d(2), # -> 56x56
+            nn.MaxPool2d(2),
 
-            nn.Conv2d(32, 64, 3, stride=2, padding=1), # -> 28x28
+            # Block 2
+            nn.Conv2d(32, 64, 3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.MaxPool2d(2), # -> 14x14
+            nn.MaxPool2d(2),
 
+            # Block 3
             nn.Conv2d(64, 128, 3, padding=1),
             nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.MaxPool2d(2), # -> 7x7
+            nn.MaxPool2d(2),
+
+            # Block 4 (important for deeper features)
+            nn.Conv2d(128, 256, 3, padding=1),
+            nn.BatchNorm2d(256),
+            nn.ReLU(),
+
+            nn.AdaptiveAvgPool2d((1,1))
         )
 
-        # 128 channels * 7 * 7 = 6272 features
-        self.embed = nn.Sequential(
-             nn.Linear(6272, 256),
-             nn.BatchNorm1d(256),
-             nn.ReLU(),
-             nn.Dropout(0.4),
-             nn.Linear(256, emb_dim)
-        )
-        
+        self.embed = nn.Linear(256, emb_dim)
         self.cls = nn.Linear(emb_dim, num_classes)
 
     def forward(self, x):
@@ -64,7 +66,6 @@ class FrequencyCNN(nn.Module):
         z = self.embed(f)
 
         logits = self.cls(z)
-        # Return logits for classification, normalized features for fusion
         return logits, F.normalize(z, p=2, dim=1)
 
 
