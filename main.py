@@ -290,8 +290,8 @@ print("Frequency:", final_freq.shape)
 # ==========================
 # NORMALIZE FEATURES
 # ==========================
-final_spatial = F.normalize(final_spatial, dim=1)
-final_freq = F.normalize(final_freq, dim=1)
+# final_spatial = F.normalize(final_spatial, dim=1)
+# final_freq = F.normalize(final_freq, dim=1)
 
 # ==========================
 # BALANCE FEATURES
@@ -353,6 +353,7 @@ class SimpleFusion(nn.Module):
         self.classifier = nn.Sequential(
             nn.Linear(256, 64),
             nn.ReLU(),
+            nn.Dropout(0.3),
             nn.Linear(64, 1)
         )
 
@@ -363,7 +364,7 @@ class SimpleFusion(nn.Module):
 
 model = SimpleFusion().to(device)
 
-optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
+optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
 criterion = nn.BCEWithLogitsLoss()
 
 EPOCHS = 10
