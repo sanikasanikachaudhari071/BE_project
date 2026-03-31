@@ -3,10 +3,14 @@ import torch.nn as nn
 
 
 class FusionTransformer(nn.Module):
-    def __init__(self, emb_dim=128, num_heads=4, num_layers=2):
+    def __init__(self, spatial_dim=1024, freq_dim=128, emb_dim=128, num_heads=4, num_layers=2):
         super().__init__()
 
         self.emb_dim = emb_dim
+        
+        # Projection layers to map inputs to common embedding dimension
+        self.spatial_proj = nn.Linear(spatial_dim, emb_dim)
+        self.freq_proj = nn.Linear(freq_dim, emb_dim)
 
         # Positional encoding (learnable)
         self.pos_embed = nn.Parameter(torch.randn(2, emb_dim))  
@@ -32,12 +36,16 @@ class FusionTransformer(nn.Module):
 
     def forward(self, spatial_vec, freq_vec):
         """
-        spatial_vec: (B, 128)
-        freq_vec:    (B, 128)
+        spatial_vec: (B, spatial_dim)
+        freq_vec:    (B, freq_dim)
         """
+        
+        # Project inputs to common embedding dimension
+        sp_emb = self.spatial_proj(spatial_vec)
+        fr_emb = self.freq_proj(freq_vec)
 
-        # Stack as sequence (B, 2, 128)
-        x = torch.stack([spatial_vec, freq_vec], dim=1)
+        # Stack as sequence (B, 2, emb_dim)
+        x = torch.stack([sp_emb, fr_emb], dim=1)
 
         # Add positional encoding
         x = x + self.pos_embed

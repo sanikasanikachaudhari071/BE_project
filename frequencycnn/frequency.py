@@ -64,10 +64,9 @@ class FrequencyCNN(nn.Module):
     def forward(self, x):
         f = self.features(x).flatten(1)
         z = self.embed(f)
-        z = F.normalize(z, p=2, dim=1)
 
         logits = self.cls(z)
-        return logits, z
+        return logits, F.normalize(z, p=2, dim=1)
 
 
 # ==========================

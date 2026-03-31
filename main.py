@@ -12,6 +12,7 @@ import os
 from preprocessing.preprocess import run_preprocessing_media
 from densenet.densenet import SpatialDenseNet, get_spatial_vectors
 from frequencycnn.frequency import get_frequency_vectors
+from Transformer.transfromermodel import FusionTransformer
 
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -159,24 +160,9 @@ train_loader = DataLoader(FusionDataset(Xsp_train, Xf_train, y_train), batch_siz
 test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test), batch_size=32)
 
 # ==========================
-# SIMPLE FUSION MODEL
+# FUSION MODEL (TRANSFORMER)
 # ==========================
-class SimpleFusion(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.classifier = nn.Sequential(
-            nn.Linear(256, 64),
-            nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(64, 1)
-        )
-
-    def forward(self, sp, fr):
-        x = torch.cat([sp, fr], dim=1)
-        return x if False else self.classifier(x)
-
-
-model = SimpleFusion().to(device)
+model = FusionTransformer().to(device)
 
 optimizer = torch.optim.Adam(model.parameters(), lr=3e-4)
 criterion = nn.BCEWithLogitsLoss()
@@ -204,7 +190,7 @@ for epoch in range(EPOCHS):
 
         total_loss += loss.item()
 
-    print(f"Epoch {epoch+1}: Loss = {total_loss:.4f}")
+    print(f"Epoch {epoch+1}: Loss = {total_loss/len(train_loader):.4f}")
 
 # ==========================
 # EVALUATION

@@ -39,14 +39,9 @@ class SpatialDenseNet(nn.Module):
         for param in self.backbone.parameters():
             param.requires_grad = False
 
-        # 🔥 TRAIN ONLY EMBEDDING LAYER
-        self.embed = nn.Linear(1024, emb_dim)
-
     def forward(self, x):
         f = self.backbone(x)
-        z = self.embed(f)
-        z = F.normalize(z, p=2, dim=1)
-        return z
+        return f
 # ==========================
 # Feature Extraction
 # ==========================
