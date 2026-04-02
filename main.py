@@ -141,7 +141,7 @@ Xf_train, freq_model = get_frequency_vectors(
     np_f_train,
     y_train.numpy(),
     device,
-    epochs=15
+    epochs=30
 )
 
 # Use explicitly extracted function so we don't accidentally train on val/test subsets
@@ -178,7 +178,7 @@ model = FusionTransformer().to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
 criterion = nn.BCEWithLogitsLoss()
 
-EPOCHS = 25
+EPOCHS = 40
 PATIENCE = 5
 best_val_loss = float('inf')
 early_stop_counter = 0
