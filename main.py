@@ -1,180 +1,102 @@
-import pandas as pd
+import os
+import glob
 import torch
-import numpy as np
+import random
 import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
-from torch.utils.data import Dataset, DataLoader
-import os
-import random
 
-from preprocessing.preprocess import run_preprocessing_media
-from densenet.densenet import SpatialDenseNet, get_spatial_vectors
-from frequencycnn.frequency import get_frequency_vectors, extract_frequency_features
 from Transformer.transfromermodel import FusionTransformer
 
-
-# Provide strict reproducibility
+# ==========================
+# REPRODUCIBILITY
+# ==========================
 SEED = 42
 random.seed(SEED)
-np.random.seed(SEED)
 torch.manual_seed(SEED)
 if torch.cuda.is_available():
     torch.cuda.manual_seed_all(SEED)
 
-
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 # ==========================
-# LOAD CSV
+# DATA LOADING (PRE-COMPUTED EMBEDDINGS)
 # ==========================
-if os.path.exists("/content/drive"):
-    csv_path = "/content/drive/MyDrive/videos.csv"
-    base_path = "/content/drive/MyDrive/"
-else:
-    csv_path = "videos.csv"
-    base_path = ""
+BASE_DIR = "/content/embeddings"
+FAKE_DIR = os.path.join(BASE_DIR, "fake")
+REAL_DIR = os.path.join(BASE_DIR, "real")
 
-df = pd.read_csv(csv_path)
+# Get all cached embedding files
+fake_files = glob.glob(os.path.join(FAKE_DIR, "*.pt"))
+real_files = glob.glob(os.path.join(REAL_DIR, "*.pt"))
 
-# ==========================
-# BALANCE VIDEO DATASET
-# ==========================
-# Dynamically scale to use the maximum possible perfectly-balanced subset (e.g. 1500 per class)
-min_class_count = min(len(df[df["label"] == 1]), len(df[df["label"] == 0]))
+print(f"Total FAKE sequences: {len(fake_files)}")
+print(f"Total REAL sequences: {len(real_files)}")
 
-df_fake = df[df["label"] == 1].sample(min_class_count, random_state=42)
-df_real = df[df["label"] == 0].sample(min_class_count, random_state=42)
-df = pd.concat([df_fake, df_real]).sample(frac=1, random_state=42).reset_index(drop=True)
+# Balance the dataset (under-sample FAKE)
+min_samples = min(len(fake_files), len(real_files))
 
-df["video_path"] = df["video_path"].apply(lambda x: base_path + x)
+if min_samples == 0:
+    print("No localized embeddings found. Please run scripts `data_pipeline/1_extract_faces.py` and `2_cache_embeddings.py` first.")
+    exit(1)
 
+fake_files = random.sample(fake_files, min_samples)
+real_files = random.sample(real_files, min_samples)
 
-# ==========================
-# SPLIT AT VIDEO LEVEL (LEAKAGE FIX)
-# ==========================
-# Splitting Test set (20%)
-df_train_full, df_test = train_test_split(df, test_size=0.2, random_state=42, stratify=df["label"])
-# Splitting Validation set from Train set (10% of Train)
-df_train, df_val = train_test_split(df_train_full, test_size=0.1, random_state=42, stratify=df_train_full["label"])
+all_files = fake_files + real_files
+labels = [1]*len(fake_files) + [0]*len(real_files)
 
-spatial_model = SpatialDenseNet().to(device)
-
-
-# ==========================
-# PROCESSING UTILS
-# ==========================
-def process_dataframe(df_subset, sp_model, dev):
-    all_spatial = []
-    all_freq_data = []
-    all_labels = []
-
-    for i, row in df_subset.iterrows():
-        path = row["video_path"]
-        label = row["label"]
-
-        spatial, freq, _ = run_preprocessing_media(path)
-
-        if spatial is None or freq is None or len(spatial) == 0:
-            continue
-
-        spatial_vec = get_spatial_vectors(spatial, sp_model, dev)
-
-        all_spatial.append(spatial_vec)
-        all_freq_data.append(freq)
-        all_labels.extend([label] * len(spatial_vec))
-
-    if len(all_spatial) == 0:
-        return None, None, None
-
-    return torch.cat(all_spatial), np.concatenate(all_freq_data), torch.tensor(all_labels)
-
-
-def balance_frames(spatial, freq, labels):
-    fake_idx = (labels == 1).nonzero(as_tuple=True)[0]
-    real_idx = (labels == 0).nonzero(as_tuple=True)[0]
-
-    min_samples = min(len(fake_idx), len(real_idx))
-
-    fake_idx = fake_idx[:min_samples]
-    real_idx = real_idx[:min_samples]
-
-    balanced_idx = torch.cat([fake_idx, real_idx])
-    
-    # Shuffle the balanced tensor
-    shuffle_mask = torch.randperm(len(balanced_idx))
-    balanced_idx = balanced_idx[shuffle_mask]
-
-    return spatial[balanced_idx], freq[balanced_idx.numpy()], labels[balanced_idx]
-
-
-# ==========================
-# EXTRACT TRAIN, VAL & TEST DATA
-# ==========================
-print("\n--- EXTRACTING TRAIN DATA ---")
-Xsp_train_unbal, Xf_train_unbal, y_train_unbal = process_dataframe(df_train, spatial_model, device)
-
-print("\n--- EXTRACTING VAL DATA ---")
-Xsp_val_unbal, Xf_val_unbal, y_val_unbal = process_dataframe(df_val, spatial_model, device)
-
-print("\n--- EXTRACTING TEST DATA ---")
-Xsp_test_unbal, Xf_test_unbal, y_test_unbal = process_dataframe(df_test, spatial_model, device)
-
-
-# ==========================
-# BALANCE FRAMES
-# ==========================
-Xsp_train, np_f_train, y_train = balance_frames(Xsp_train_unbal, Xf_train_unbal, y_train_unbal)
-Xsp_val, np_f_val, y_val = balance_frames(Xsp_val_unbal, Xf_val_unbal, y_val_unbal)
-Xsp_test, np_f_test, y_test = balance_frames(Xsp_test_unbal, Xf_test_unbal, y_test_unbal)
-
-print(f"\nBalanced Train samples: {len(y_train)}")
-print(f"Balanced Val samples: {len(y_val)}")
-print(f"Balanced Test samples: {len(y_test)}")
-
-
-# ==========================
-# TRAIN FREQUENCY MODEL
-# ==========================
-print("\nTraining Frequency Model on Train Split...")
-Xf_train, freq_model = get_frequency_vectors(
-    np_f_train,
-    y_train.numpy(),
-    device,
-    epochs=30
+# Video-level splitting (no data leakage)
+X_train_val_files, X_test_files, y_train_val, y_test = train_test_split(
+    all_files, labels, test_size=0.2, random_state=SEED, stratify=labels
+)
+X_train_files, X_val_files, y_train, y_val = train_test_split(
+    X_train_val_files, y_train_val, test_size=0.1, random_state=SEED, stratify=y_train_val
 )
 
-# Use explicitly extracted function so we don't accidentally train on val/test subsets
-Xf_val = extract_frequency_features(np_f_val, freq_model, device)
-Xf_test = extract_frequency_features(np_f_test, freq_model, device)
+print(f"Train/Val/Test Split: {len(X_train_files)} / {len(X_val_files)} / {len(X_test_files)} Videos")
 
 
 # ==========================
-# DATASET & DATALOADERS
+# DATASET
 # ==========================
-class FusionDataset(Dataset):
-    def __init__(self, sp, fr, labels):
-        self.sp = sp
-        self.fr = fr
-        self.labels = labels
+class EmbeddingDataset(Dataset):
+    def __init__(self, file_paths):
+        self.file_paths = file_paths
 
     def __len__(self):
-        return len(self.labels)
+        return len(self.file_paths)
 
     def __getitem__(self, idx):
-        return self.sp[idx], self.fr[idx], self.labels[idx]
+        data = torch.load(self.file_paths[idx], map_location=device)
+        return data["spatial"], data["freq"], data["label"]
 
+# Custom collate_fn since sequences can have different lengths
+# i.e., different numbers of frames extracted
+def pad_collate(batch):
+    sp_list, fr_list, labels_list = [], [], []
+    for sp, fr, lbl in batch:
+        sp_list.append(sp)
+        fr_list.append(fr)
+        labels_list.append(lbl)
 
-train_loader = DataLoader(FusionDataset(Xsp_train, Xf_train, y_train.float()), batch_size=32, shuffle=True)
-val_loader = DataLoader(FusionDataset(Xsp_val, Xf_val, y_val.float()), batch_size=32, shuffle=False)
-test_loader = DataLoader(FusionDataset(Xsp_test, Xf_test, y_test.float()), batch_size=32, shuffle=False)
+    # Pad sequences to match the max length in batch
+    sp_padded = torch.nn.utils.rnn.pad_sequence(sp_list, batch_first=True)
+    fr_padded = torch.nn.utils.rnn.pad_sequence(fr_list, batch_first=True)
+    labels = torch.tensor(labels_list, dtype=torch.float32)
+    return sp_padded, fr_padded, labels
+
+train_loader = DataLoader(EmbeddingDataset(X_train_files), batch_size=16, shuffle=True, collate_fn=pad_collate)
+val_loader = DataLoader(EmbeddingDataset(X_val_files), batch_size=16, shuffle=False, collate_fn=pad_collate)
+test_loader = DataLoader(EmbeddingDataset(X_test_files), batch_size=16, shuffle=False, collate_fn=pad_collate)
+
 
 # ==========================
-# FUSION MODEL (TRANSFORMER)
+# TRANSFORMER TRAINING
 # ==========================
 model = FusionTransformer().to(device)
 
-# Updated strictly to 1e-4 based on feedback (more stable learning)
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-4)
 criterion = nn.BCEWithLogitsLoss()
 
@@ -183,26 +105,17 @@ PATIENCE = 5
 best_val_loss = float('inf')
 early_stop_counter = 0
 
-
-# ==========================
-# TRAINING WITH EARLY STOPPING
-# ==========================
 print("\n--- TRAINING FUSION MODEL ---")
 for epoch in range(EPOCHS):
-
-    # 1. Training Phase
     model.train()
     total_train_loss = 0
 
     for sp, fr, lbl in train_loader:
         sp, fr, lbl = sp.to(device), fr.to(device), lbl.to(device)
-
         optimizer.zero_grad()
+
         outputs = model(sp, fr).squeeze()
-        
-        # Depending on batch size, output might not have rank 1 natively if 1 element
-        if outputs.dim() == 0:
-            outputs = outputs.unsqueeze(0)
+        if outputs.dim() == 0: outputs = outputs.unsqueeze(0)
             
         loss = criterion(outputs, lbl)
         loss.backward()
@@ -212,16 +125,13 @@ for epoch in range(EPOCHS):
         
     avg_train_loss = total_train_loss / len(train_loader)
 
-    # 2. Validation Phase
     model.eval()
     total_val_loss = 0
     with torch.no_grad():
         for sp, fr, lbl in val_loader:
             sp, fr, lbl = sp.to(device), fr.to(device), lbl.to(device)
             outputs = model(sp, fr).squeeze()
-            if outputs.dim() == 0:
-                outputs = outputs.unsqueeze(0)
-            
+            if outputs.dim() == 0: outputs = outputs.unsqueeze(0)
             loss = criterion(outputs, lbl)
             total_val_loss += loss.item()
             
@@ -229,11 +139,9 @@ for epoch in range(EPOCHS):
     
     print(f"Epoch {epoch+1:02d}: Train Loss = {avg_train_loss:.4f}  |  Val Loss = {avg_val_loss:.4f}")
 
-    # 3. Early Stopping Check
     if avg_val_loss < best_val_loss:
         best_val_loss = avg_val_loss
         early_stop_counter = 0
-        # Save best model to ensure we roll back to best weights!
         torch.save(model.state_dict(), "deepfake_model.pth")
     else:
         early_stop_counter += 1
@@ -242,35 +150,29 @@ for epoch in range(EPOCHS):
         print(f"\n[!] Early Stopping Triggered! Validation loss failed to improve for {PATIENCE} epochs.")
         break
 
-
 # ==========================
-# EVALUATION (ON TEST SET)
+# EVALUATION (TEST SET)
 # ==========================
-# Load the strictly absolute best weights from the early stopping mechanism
-model.load_state_dict(torch.load("deepfake_model.pth"))
+if os.path.exists("deepfake_model.pth"):
+    model.load_state_dict(torch.load("deepfake_model.pth"))
+    
 model.eval()
-
 all_preds = []
 all_true = []
 
 with torch.no_grad():
     for sp, fr, lbl in test_loader:
         sp, fr = sp.to(device), fr.to(device)
-        
         outputs = model(sp, fr).squeeze()
-        if outputs.dim() == 0:
-            outputs = outputs.unsqueeze(0)
-            
-        # Tuned custom threshold to 0.6 per mentorship advice
-        preds = (torch.sigmoid(outputs) > 0.6).cpu().numpy()
+        if outputs.dim() == 0: outputs = outputs.unsqueeze(0)
 
+        preds = (torch.sigmoid(outputs) > 0.6).cpu().numpy()
         all_preds.extend(preds)
         all_true.extend(lbl.numpy())
 
-print("\n===== Evaluation =====")
+print("\n===== Evaluationing Testing =====")
 print("Accuracy :", f"{accuracy_score(all_true, all_preds) * 100:.2f}%")
 print("Precision:", f"{precision_score(all_true, all_preds, zero_division=0) * 100:.2f}%")
 print("Recall   :", f"{recall_score(all_true, all_preds, zero_division=0) * 100:.2f}%")
 print("F1 Score :", f"{f1_score(all_true, all_preds, zero_division=0) * 100:.2f}%")
-
-print("\nModel saved and evaluated successfully!")
+print("\nModel trained using cached embeddings and evaluated successfully!")
