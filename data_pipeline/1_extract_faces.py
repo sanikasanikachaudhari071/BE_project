@@ -71,27 +71,27 @@ if __name__ == "__main__":
     os.makedirs(FAKE_OUT, exist_ok=True)
     os.makedirs(REAL_OUT, exist_ok=True)
 
+    print("Scanning entire dataset directory for video files...")
+    all_videos = glob.glob(os.path.join(dataset_path, "**", "*.mp4"), recursive=True)
+    all_videos.extend(glob.glob(os.path.join(dataset_path, "**", "*.avi"), recursive=True))
+
     fake_folders = [
         "DeepFakeDetection", "Deepfakes", "Face2Face", 
         "FaceShifter", "FaceSwap", "NeuralTextures"
     ]
 
-    print("Extracting faces from FAKE videos...")
-    for folder in fake_folders:
-        folder_path = os.path.join(dataset_path, folder)
-        if not os.path.exists(folder_path):
-            continue
-        videos = glob.glob(os.path.join(folder_path, "*.mp4"))
-        print(f"[{folder}] found {len(videos)} videos.")
-        for v in videos:
-            extract_faces_from_video(v, FAKE_OUT, max_frames=5)
+    print(f"Total video files found in dataset: {len(all_videos)}")
 
-    print("Extracting faces from REAL videos...")
-    real_path = os.path.join(dataset_path, "original")
-    if os.path.exists(real_path):
-        videos = glob.glob(os.path.join(real_path, "*.mp4"))
-        print(f"[original] found {len(videos)} videos.")
-        for v in videos:
+    for v in all_videos:
+        normalized_path = v.lower()
+        if "original" in normalized_path:
+            # It's a REAL video
             extract_faces_from_video(v, REAL_OUT, max_frames=5)
-    
+        elif any(f.lower() in normalized_path for f in fake_folders):
+            # It's a FAKE video
+            extract_faces_from_video(v, FAKE_OUT, max_frames=5)
+        else:
+            # Fallback for unrecognized folders, but usually safe to ignore or just print
+            pass
+            
     print("Face extraction complete!")
