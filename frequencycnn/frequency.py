@@ -100,10 +100,9 @@ def train_one_epoch(model, loader, optimizer, device):
 def get_frequency_vectors(freq_np, labels_np, device, epochs=5):
 
     dataset = FrequencyDataset(freq_np, labels_np)
-    loader = DataLoader(dataset, batch_size=16, shuffle=False)
-
+    loader = DataLoader(dataset, batch_size=16, shuffle=True)
     model = FrequencyCNN().to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)
 
     # Train
     for e in range(epochs):

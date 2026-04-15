@@ -37,10 +37,15 @@ class FusionTransformer(nn.Module):
 
     def forward(self, spatial_vec, freq_vec):
         """
-        spatial_vec: (B, spatial_dim)
-        freq_vec:    (B, freq_dim)
+        spatial_vec: (B, T, spatial_dim) or (B, spatial_dim)
+        freq_vec:    (B, T, freq_dim) or (B, freq_dim)
         """
-        
+        # Average across the frames/sequence dimension (T) so we are left with a single representation per video
+        if spatial_vec.dim() == 3:
+            spatial_vec = spatial_vec.mean(dim=1)
+        if freq_vec.dim() == 3:
+            freq_vec = freq_vec.mean(dim=1)
+            
         # Project inputs to common embedding dimension
         sp_emb = self.spatial_proj(spatial_vec)
         fr_emb = self.freq_proj(freq_vec)
