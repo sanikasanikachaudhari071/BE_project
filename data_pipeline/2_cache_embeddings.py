@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 import sys
 from collections import defaultdict
+import albumentations as A
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from preprocessing.preprocess import spatial_preprocess, frequency_preprocess
@@ -53,9 +54,10 @@ if __name__ == "__main__":
     freq_train_data = []
     freq_train_labels = []
 
-    # Sample max 1500 real and 1500 fake videos for training FrequencyCNN (to save memory)
-    sampled_fake = list(fake_vids.keys())[:1500]
-    sampled_real = list(real_vids.keys())[:1500]
+    # Sample equal amount of real and fake videos to strictly prevent majority-class guessing
+    min_len = min(len(fake_vids), len(real_vids), 1500)
+    sampled_fake = list(fake_vids.keys())[:min_len]
+    sampled_real = list(real_vids.keys())[:min_len]
 
     for vid in sampled_fake:
         for fpath in fake_vids[vid]:
@@ -76,7 +78,7 @@ if __name__ == "__main__":
     
     print(f"Training FrequencyCNN on {len(np_f_train)} face samples...")
     # This trains FrequencyCNN and returns the model
-    _, freq_model = get_frequency_vectors(np_f_train, y_train_arr, device, epochs=10)
+    _, freq_model = get_frequency_vectors(np_f_train, y_train_arr, device, epochs=20)
 
     # Free memory
     del np_f_train
@@ -86,44 +88,72 @@ if __name__ == "__main__":
     spatial_model = SpatialDenseNet().to(device)
     spatial_model.eval()
 
+    aug_pipeline = A.Compose([
+        A.HorizontalFlip(p=0.5),
+        A.RandomBrightnessContrast(p=0.5),
+    ])
+
     def process_and_cache_videos(vid_dict, out_dir, label):
         print(f"Processing and caching {len(vid_dict)} videos into {out_dir} ...")
         for vid, paths in vid_dict.items():
             sp_list = []
             fr_list = []
+            aug_sp_list = []
+            aug_fr_list = []
+            
             for p in paths:
                 img = load_face_image(p)
                 if img is None: continue
                 
+                # Standard features
                 sp_pre = spatial_preprocess(img) # (224, 224, 3)
                 fr_pre = frequency_preprocess(img) # (224, 224, 1)
-
                 sp_list.append(sp_pre)
                 fr_list.append(fr_pre)
+
+                # Augmented features
+                augmented = aug_pipeline(image=img)
+                aug_img = augmented["image"]
+                aug_sp_list.append(spatial_preprocess(aug_img))
+                aug_fr_list.append(frequency_preprocess(aug_img))
             
             if len(sp_list) == 0: continue
             
             np_sp = np.stack(sp_list)
             np_fr = np.stack(fr_list)
+            np_sp_aug = np.stack(aug_sp_list)
+            np_fr_aug = np.stack(aug_fr_list)
 
             # Convert to tensors
             t_sp = torch.tensor(np_sp, dtype=torch.float32).permute(0,3,1,2).to(device)
+            t_sp_aug = torch.tensor(np_sp_aug, dtype=torch.float32).permute(0,3,1,2).to(device)
             
             # Apply Densenet
             with torch.no_grad():
                 sp_vec = spatial_model(t_sp).cpu()
+                sp_vec_aug = spatial_model(t_sp_aug).cpu()
 
             # Apply trained Freq model
             dummy_y = np.zeros(len(np_fr))
             from frequencycnn.frequency import extract_frequency_features
             fr_vec = extract_frequency_features(np_fr, freq_model, device)
+            fr_vec_aug = extract_frequency_features(np_fr_aug, freq_model, device)
 
+            # Save Base
             save_path = os.path.join(out_dir, f"{vid}.pt")
             torch.save({
                 "spatial": sp_vec,
                 "freq": fr_vec,
                 "label": label
             }, save_path)
+
+            # Save Augmented
+            save_path_aug = os.path.join(out_dir, f"{vid}_aug.pt")
+            torch.save({
+                "spatial": sp_vec_aug,
+                "freq": fr_vec_aug,
+                "label": label
+            }, save_path_aug)
 
 
     process_and_cache_videos(fake_vids, FAKE_OUT, 1)
