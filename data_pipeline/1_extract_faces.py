@@ -1,7 +1,7 @@
 import os
 import cv2
 import glob
-import kagglehub
+import argparse
 import numpy as np
 
 # We'll import local preprocess components
@@ -58,10 +58,16 @@ def extract_faces_from_video(video_path, output_dir, max_frames=5, frame_interva
     cap.release()
 
 if __name__ == "__main__":
-    print("Downloading dataset using kagglehub...")
-    # NOTE: Run this in Colab!
-    dataset_path = kagglehub.dataset_download("reubensuju/celeb-df-v2")
-    print(f"Dataset downloaded to: {dataset_path}")
+    parser = argparse.ArgumentParser(description="Extract faces from dataset")
+    parser.add_argument("--dataset_path", type=str, default="/content/celeb-df-v2", help="Path to the unzipped dataset folder")
+    args = parser.parse_args()
+
+    dataset_path = args.dataset_path
+    if not os.path.exists(dataset_path):
+        print(f"Error: Dataset path '{dataset_path}' does not exist! Please ensure it's unzipped.")
+        exit(1)
+        
+    print(f"Using dataset located at: {dataset_path}")
 
     # Output paths
     BASE_OUT = "/content/extracted_faces"

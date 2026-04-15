@@ -32,4 +32,3 @@ wandb>=0.13.0
 flask>=2.2.0
 fastapi>=0.95.0
 uvicorn>=0.18.0
-kagglehub>=0.2.0
