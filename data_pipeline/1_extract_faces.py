@@ -60,7 +60,7 @@ def extract_faces_from_video(video_path, output_dir, max_frames=5, frame_interva
 if __name__ == "__main__":
     print("Downloading dataset using kagglehub...")
     # NOTE: Run this in Colab!
-    dataset_path = kagglehub.dataset_download("xdxd003/ff-c23")
+    dataset_path = kagglehub.dataset_download("reubensuju/celeb-df-v2")
     print(f"Dataset downloaded to: {dataset_path}")
 
     # Output paths
@@ -75,19 +75,14 @@ if __name__ == "__main__":
     all_videos = glob.glob(os.path.join(dataset_path, "**", "*.mp4"), recursive=True)
     all_videos.extend(glob.glob(os.path.join(dataset_path, "**", "*.avi"), recursive=True))
 
-    fake_folders = [
-        "DeepFakeDetection", "Deepfakes", "Face2Face", 
-        "FaceShifter", "FaceSwap", "NeuralTextures"
-    ]
-
     print(f"Total video files found in dataset: {len(all_videos)}")
 
     for v in all_videos:
-        normalized_path = v.lower()
-        if "original" in normalized_path:
+        normalized_path = v.replace("\\", "/").lower()
+        if "youtube-real" in normalized_path or "celeb-real" in normalized_path:
             # It's a REAL video
             extract_faces_from_video(v, REAL_OUT, max_frames=5)
-        elif any(f.lower() in normalized_path for f in fake_folders):
+        elif "celeb-synthesis" in normalized_path:
             # It's a FAKE video
             extract_faces_from_video(v, FAKE_OUT, max_frames=5)
         else:
