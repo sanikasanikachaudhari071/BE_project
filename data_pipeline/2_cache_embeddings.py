@@ -79,6 +79,10 @@ if __name__ == "__main__":
     print(f"Training FrequencyCNN on {len(np_f_train)} face samples...")
     # This trains FrequencyCNN and returns the model
     _, freq_model = get_frequency_vectors(np_f_train, y_train_arr, device, epochs=20)
+    
+    # Save the trained FrequencyCNN model for inference
+    torch.save(freq_model.state_dict(), "freq_model.pth")
+    print("Saved freq_model.pth successfully!")
 
     # Free memory
     del np_f_train

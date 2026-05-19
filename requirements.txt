@@ -32,3 +32,5 @@ wandb>=0.13.0
 flask>=2.2.0
 fastapi>=0.95.0
 uvicorn>=0.18.0
+streamlit>=1.20.0
+yt-dlp>=2023.0.0

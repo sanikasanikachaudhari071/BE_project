@@ -1,0 +1,791 @@
+ 
+ 
+ 
+ 
+ 
+Sensors 2025, 25, x https://doi.org/10.3390/xxxxx 
+Concept Paper  1 
+DeepShield: Efficient and Scalable Web-Based Deepfake De- 2 
+tection for Audio and Video Content 3 
+by Dr. Deepali Newaskar¹, Aakanksha Andhare², Anushri Pillai², Trupti Jadhav², Ashwini Sonawane²   4 
+ 5 
+ 6 
+¹Head of Department, Department of Computer Engineering, RMD Sinhgad Technical Institutes Campus, Pune, 7 
+India 8 
+²Department of Computer Engineering, RMD Sinhgad Technical Institutes Campus, Pune, India 9 
+Emails: deepalinewaskar@gmail.com, aakankshaandhare@gmail.com, anushripillai19@gmail.com, jadha- 10 
+vtrupti792@gmail.com, ashwinisonawane9853@gmail.comAffiliation 1; e-mail@e-mail.com 11 
+ 12 
+What are the main findings? 13 
+• A dual-modality deepfake detection framework integrates CNN-LSTM for video and 14 
+MFCC-LSTM for audio. 15 
+• The system demonstrates high accuracy (94% video, 98% audio) and supports web - 16 
+based deployment. 17 
+ 18 
+What is the implication of the main finding? 19 
+• The proposed system enables real -time deepfake detection on audio and video con- 20 
+tent. 21 
+• Practical for use in media verification, cybercrime prevention, and digital forensics . 22 
+ 23 
+Abstract:
+ Deep learning has advanced at a staggering pace, facilitating the production of 24 
+near-original deepfakes—video and audio files that impersonate real people convincingly. 25 
+These advancements can be beneficial in entertainment, accessibility, and content creation, 26 
+however, many of the technological misuse can bring harm relating to misinformation, 27 
+digital trickery, Impersonation in cybercrimes, fraud and identity theft. This paper 28 
+describes a dual -modality deepfake detection system that targets both video and audio 29 
+forgeries through custom deep learning techniques. For the video detection, we suggest a 30 
+hybrid CNN-LSTM model which retrieves spatial information of cropped faces and also 31 
+tracks temporal changes across sequences. For audio deepfake detection, a lightweight 32 
+LSTM architecture with Mel Frequency Cepstral Coefficients (MFCCs) is suggested. Both 33 
+models are embedded within a web -based detection platform to  enable practical 34 
+application in the real world, allowing users to independently upload and examine media 35 
+content for credible authenticity. 36 
+For video deepfake detection, the results are evaluated using a composite dataset 37 
+comprising FaceForensics++, Celeb-DF (v2), and DFDC facial frame samples, and attained 38 
+an accuracy of 94% whereas for audio detection, the SceneFake dataset with different 39 
+noise and enhancement levels is used with detection accuracy of 98%. The suggested 40 
+methodology works in real-time and can be deployed in non-controlled scenarios without 41 
+the need for  specialized hardware. The experimental results validate the robustness of 42 
+Academic Editor: Dr D 
+Received: date 
+Revised: date 
+Accepted: date 
+Published: date 
+Citation: To be added by editorial 
+staff during production. 
+Copyright: © 2025 by the authors. 
+Submitted for possible open access 
+publication under the terms and 
+conditions of the Creative Commons 
+Attribution (CC BY) license 
+(https://creativecommons.org/license
+s/by/4.0/). 
+Sensors 2025, 25, x FOR PEER REVIEW 2 of 22  
+ 
+the framework on various types of manipulations, making it an effective instrument  for 43 
+multimedia forensics and digital content authentication. 44 
+ 45 
+Keywords: Deepfake Detection; Audio Spoofing; Video Manipulation; CNN -LSTM; 46 
+MFCC; Multimedia Forensics; Synthetic Media; Real-Time Detection 47 
+ 48 
+1. Introduction 49 
+In regard to the advancement of deep learning and generative models, the existence of 50 
+deepfake technologies pose a new more sophisticated challenge towards the verification 51 
+and authentication systems of digital media. Deepfakes are self -sufficient clips that 52 
+integrate video and audio bound together through Artificial Intelligent systems featuring 53 
+exact resemblance to the target individual’s traits and mannerisms. Despite the fact that 54 
+the technology could enhance the fields of industry such as entertainment, education, and 55 
+even disability aid, the possibility of misinformation, social and content abuse and identity 56 
+theft poses serious ethical issues. 57 
+One consequence from the misuse of AI is the ability to impersonate to a social identity by 58 
+generating falsified content which is going beyond boundaries. The sophisticated nature 59 
+of these technologies has propelled deepfake technologies to gain popularity among 60 
+amateurs using them for unscrupulous reasons. With access to open -source tools for the 61 
+AI deep learning framework, it has become very easy even for novices to create convincing 62 
+fake media. As the sophistication of deepfake technologies increase, so does the dosage of 63 
+contention which lowers the public trust towards digital content. Basic detection processes 64 
+are becoming obsolete, which further highlights the necessity of protective automated 65 
+systems that have the ability to detect deepfakes efficiently and within a short amount of 66 
+time[1-7]. 67 
+Concerning this issue, many researchers have adopted deep learning methods, especially 68 
+those employing deep neural networks. In this category, Convolutional Neural Networks 69 
+(CNNs) are frequently utilized to spatially extract features from image videos or audio 70 
+spectrograms while Recurrent Neural Networks (RNNs) - specifically Long Short -Term 71 
+Memory, or LSTM, units - are used to retain temporal and sequential order dependencies. 72 
+With the growing threat of deepfakes, detecting manipulated audio and video content has 73 
+become increasingly important. Deepfake detection techniques analyze inconsistencies in 74 
+speech and visual patterns to identify synthetic media. Features like Mel -Frequency 75 
+Cepstral Coefficients (MFCCs) are extracted to capture key characteristics of speech. These 76 
+features are then analyzed using a Long Short -Term Memory (LSTM) model to detect 77 
+temporal anomalies typical in fake audio. This work integrates both audio (LSTM-MFCC) 78 
+and video (LSTM -CNN) based detection into a unified deepfake identification system. 79 
+These types of structures are particularly good at recognizing sophisticated alterations that 80 
+escape the notice of even the most attentive humans [8-9]. 81 
+In this paper we have suggested a dual -modality deepfake detection framework capable 82 
+of handling both audio and video deepfake detection. For video deepfake detection, we 83 
+apply a deep learning methodology using CNN -LSTM, where CNNs spatially pool face 84 
+Sensors 2025, 25, x FOR PEER REVIEW 3 of 22  
+ 
+frame sequences and LSTMs capture the temporal relationship across video frames. We 85 
+have used Faceforensics++ and Celeb-DF datasets for the video detection system. 86 
+Audio deepfake detection methods tend to rely on spectral features, prosodic features, or 87 
+phase discrepancies to identify real and synthetic speech.  CNNs, autoencoders, and 88 
+transformer-based classifiers are  some of the models that are typically 89 
+employed to examine these features for detecting forgery. For audio detection, we capture 90 
+speech using Mel Frequency Cepstral Coefficients (MFCCs) and then feed them into an 91 
+LSTM-based model designed to recognize temporal structures within speech and identify 92 
+inconsistencies resulting from synthesis. The model is trained using the SceneFake dataset 93 
+which contains audio samples with different signal -to-noise ratios and enhancement 94 
+techniques applied [11-17].  95 
+This integrated approach allows for comprehensive and accurate detection of deepfakes 96 
+across modalities, outperforming traditional single-stream detectors. 97 
+ 98 
+                         1,1 Techniques for deepfake video detection 99 
+ 100 
+The fabricated video faces purportedly undergo Generative Adversarial Network (GAN)  101 
+and reenactment model manipulation advanced deepfake video detection techniques and 102 
+rationale have evolved rapidly to keep pace with the sophistication of facial manipulation. 103 
+Detection techniques have advanced beyond simple artifact examination to integrate 104 
+sophisticated deep learning techniques that analyze the face manipulation from an 105 
+extensive temporal and spatial perspective. 106 
+Some of widely accepted video deepfake detection techniques are:  107 
+•  CNN-Based Frame Analysis: CNNs such as XceptionNet and MesoNet analyze 108 
+video frames capturing spatial artifacts like blending artifacts or unnatural 109 
+textures. 110 
+•  Hybrid CNN-LSTM Models: Frame features are isolated by CNNs, while LSTMs 111 
+analyze sequential frames to capture motion discrepancies across time.  112 
+•  3D CNNs and Spatiotemporal Networks: Video clips are processed as a 3D block 113 
+enabling simultaneous spatial and temporal feature learning. 114 
+•  Vision Transformers (ViTs): Global relations among patches of a frame are 115 
+captured by transformer -based architectures which have outperformed other 116 
+models in recent evaluations. 117 
+•  Lip Sync and Audio -Visual Consistency Checks: These techniques identify 118 
+articulation and timing disagreements by relating speech to the corresponding 119 
+facial movements. 120 
+•  Biological Signal Analysis: The model tries to find absent physiological signals, 121 
+such as blinking or heartbeat, that may indicate life in the region of the face. 122 
+•  Frequency Domain Analysis: Techniques like Fourier transforms are applied to 123 
+expose forms of manipulation that are not visible in the spatial domain.  124 
+•  Multi-Region and Ensemble Methods: These aggregate face region wise 125 
+predictions or different types of models to enhance effectiveness. 126 
+•  One-Class and Anomaly Detection: These models are trained only on real videos 127 
+and detect any fake content as anomalous. 128 
+Sensors 2025, 25, x FOR PEER REVIEW 4 of 22  
+ 
+• Preprocessing and Aggregation: Typical procedures are face alignment, frame 129 
+extraction, normalization, and merging per frame predictions into a single final 130 
+classification. 131 
+     1.2 Techniques for deepfake audio detection 132 
+The development of deepfake audio detection techniques has attracted a lot of attention 133 
+because of the availability of new generative models like WaveNet, Tacotron, and voice 134 
+conversion systems, which can create ultra -realistic synthetic speech. This has led 135 
+researchers to examine various methods for detecting synthetic speech using traditional 136 
+signal-based techniques as well as deep learning. 137 
+ Various techniques used for deepfake audio detection are as follows. 138 
+• MFCC Based Classifiers- (MFCC)- MFCCs, which are frequently used as features 139 
+in SVMs or even deep neural networks, are known to capture pertinent features of 140 
+speech. 141 
+• Spectrogram and CNN: Speech synthesization 'fake' marks are also detected using 142 
+CNNs on time-domain mel and log-spectrograms that are pre-obtained. This also 143 
+includes detecting fakes on Mel spectrograms. 144 
+• Raw Waveforms Modelling: Handcrafted feature extraction is not a necessity for 145 
+end-to-end systems such as RawNet2 which processes audio through trained 146 
+models. 147 
+•  CRNN Models: These types of Convolutional Recurrent Neural Networks 148 
+(CRNN) which combines time and space consist of models that are able to handle 149 
+persistence of detectably small alterations. 150 
+•  RNNs, as well as BiLSTM models, are commonly appropriate for building 151 
+sequence dependent models. 152 
+• Frequency and Phase Analysis: Certain methods review the frequency spectrum 153 
+or phase distortion to identify residue masquerade vocoders. 154 
+•  Transformer Based Models: Models such as Wav2Vec 2.0 and AST (Audio 155 
+Spectrogram Transformer) have used self-attention for spoofing detection. 156 
+• GAN Fingerprint Detection: It detects artifacts of artificial synthesis from a specific 157 
+generative model such as WaveGAN or MelGAN. 158 
+• Self-supervised and Contrastive Learning: These methods improve feature 159 
+learning through extensive available unlabelled data. 160 
+ 161 
+ 162 
+ 163 
+ 164 
+ 165 
+ 166 
+ 167 
+ 168 
+ 169 
+ 170 
+Sensors 2025, 25, x FOR PEER REVIEW 5 of 22  
+ 
+2. Materials and Methods 171 
+2.1 Proposed Video Deepfake Detection System 172 
+ 173 
+Fig. 1. Block Diagram of the proposed system for Video 174 
+ 175 
+o Proposed System Architecture  176 
+The proposed deepfake video detection system is based on a hybrid CNN -LSTM 177 
+architecture designed to capture both spatial and temporal inconsistencies in manipulated 178 
+facial content. The system comprises three main components: a CNN for feature extraction, 179 
+a BiLSTM for temporal modelling, and a fully connected layer for classification. Fig.1 180 
+depicts the overview of the proposed system. 181 
+• Convolutional Neural Network (CNN) 182 
+The CNN component is responsible for extracting spatial features from individual video 183 
+frames. The architecture of the CNN is inspired by XceptionNet, a deep convolutional 184 
+neural network known for its efficient feature extraction capabilities. The CNN consists of 185 
+multiple convolutional layers, each followed by a batch normalization layer and a ReLU 186 
+activation function. The convolutional layers learn to extract relevant features from the 187 
+input frames, such as edges, textures, and facial features. The batch normalization layers 188 
+help to stabilize the training process and improve the generalization performance of the 189 
+network. The ReLU activation functions introduce non-linearity into the network, allowing 190 
+it to learn complex patterns in the data. 191 
+Adaptive Average Pooling is applied to reduce feature map dimensions . This helps to 192 
+reduce the computational cost of the subsequent LSTM layer and also makes the system 193 
+more robust to variations in the size and position of the face in the input frames.  194 
+• Bidirectional Long Short-Term Memory (BiLSTM) 195 
+The BiLSTM component is responsible for modeling the temporal dependencies between 196 
+the frame-level features extracted by the CNN. The BiLSTM network consists of two LSTM 197 
+layers, one for processing the input sequence in the forward direction and the other for 198 
+
+Sensors 2025, 25, x FOR PEER REVIEW 6 of 22  
+ 
+processing it in the backward direction. This allows the network to capture both past and 199 
+future temporal dependencies across the sequence of frames. The LSTM layers are 200 
+designed to handle long-range dependencies in sequential data, making them well -suited 201 
+for modelling the temporal dynamics of facial movements and expressions. The BiLSTM 202 
+architecture enables the model to detect subtle inconsistencies in facial motion or lighting 203 
+artifacts introduced during deepfake generation. 204 
+• Fully Connected Layer 205 
+The output of the BiLSTM is fed into a set of fully connected layers, followed by a sigmoid 206 
+activation function at the output layer. The fully connected layers learn to map the 207 
+temporal features extracted by the BiLSTM to a scalar probability score indicating the 208 
+likelihood of the input being a deepfake. The sigmoid activation function ensures that the 209 
+output score is between 0 and 1, representing the probability of the input being fake. A 210 
+threshold (typically 0.5) is applied to this score for binary classification, determining 211 
+whether the video is classified as REAL or FAKE [17-22]. 212 
+2.2.1 Proposed Video Deepfake Detection Algorithm 213 
+ 214 
+ 215 
+ 216 
+Fig. 2: Flowchart of the Proposed Deepfake Video Detection Algorithm 217 
+ 218 
+ 219 
+ 220 
+
+Sensors 2025, 25, x FOR PEER REVIEW 7 of 22  
+ 
+2.2.2 Evaluation of the Proposed System: 221 
+To evaluate the performance of the proposed deepfake detection system, different 222 
+experiments were conducted on a publicly available deepfake dataset. The dataset consists 223 
+of a collection of real and fake videos, with the fake videos generated using various 224 
+deepfake techniques. Widely recognized datasets such as DFDC dataset, faceforensic++, 225 
+Celeb-DF are used to train and evaluate the proposed model. The peculiarity of these 226 
+dataset includes a diverse set of videos with varying resolutions, lighting conditions, and 227 
+facial expressions, which offers robustness and generalizability to the proposed system. 228 
+The dataset is split into training, validation, and testing sets to ensure a fair evaluation of 229 
+the model's performance. Some sample images from the Deepfake Video Detection Dataset 230 
+are shown in Fig.3 shown below. 231 
+ 232 
+ 233 
+ 234 
+ 235 
+ 236 
+           Fig. 3. Sample Images from the Deepfake Video Detection Dataset 237 
+ 238 
+• Implementation Details 239 
+The CNN-LSTM model was implemented using the PyTorch deep learning framework. 240 
+The model was trained using the Adam optimizer with a learning rate of 0.001 and a batch 241 
+size of 32. The training process was conducted on a GPU server using Google Colab.  242 
+a. Model Initialization 243 
+It starts with model architecture for CNN -LSTM initialization. The CNN Layers are built 244 
+to extract spatial features applied to every input video frame recognizing important 245 
+structures and patterns of the face. The generated  features are then passed to three 246 
+Adaptive Average Pooling layers to shrink the dimensions of the feature maps while 247 
+retaining prominent information. The generated output then goes into a Long Short Term 248 
+Memory (LSTM) layer that serves in capturing temporal dependencies over a sequence is 249 
+real or fake. After defining the architecture, the  model loads the pre -trained weights 250 
+learned during training step and sets the model to evaluation mode to ensure that output 251 
+remain same when we use this model for inference. 252 
+b. Video Preprocessing 253 
+Once the model has been initialized, the input video has to be loaded for processing. Since 254 
+video is composed of 30 or more frames, uniform sampling is performed within a video 255 
+at a rate of one frame per second to minimize computational overhead and to ensure 256 
+frames contain useful segmentation. Then, it is pre -processed the extracted frames to fit 257 
+the input format expected by the model. This can involve converting the frame to an RGB 258 
+
+Sensors 2025, 25, x FOR PEER REVIEW 8 of 22  
+ 
+format via the PIL library, resizing to a fixed resolution of 128x128 pixels and normalizing 259 
+(by taking the mean and standard deviation of 0.5 for each channel to normalize the pixel 260 
+intensity values between the range of  [-1,1]). These normalization values are used to 261 
+render input stable and to boost model performance. The processed frame is  then 262 
+transformed into a PyTorch tensor for use in the model. 263 
+c. Frame-Level Inference 264 
+After preprocessing all the frames, they are sent to the model one at a time for frame-level 265 
+inference. First, each frame goes through the CNN layers to  capture spacial features that 266 
+encode facial and contextual information. Adaptive Average Pooling is then used to 267 
+convert these features into a fixed-size feature vector, independent of the input resolution. 268 
+The pooled features are reshaped and fed into a LSTM (Long-Short Term Memory) layer, 269 
+which examines how the features evolve temporally across the frames. Finally, the 270 
+temporal output from LSTM is passed on to Fully Connected layers which are responsible 271 
+for returning values i.e. raw prediction score (logit) for frames. The predicted output is a  272 
+score indicating how confident is the model about whether the frame is authentic or fake.  273 
+ 274 
+ 275 
+       Fig. 4. Deepfake Video Detection Framework based on CNN-LSTM 276 
+ 277 
+ 278 
+Fig. 4. explains the process where the input video is frame -sampled, then face -detection, 279 
+cropping, and alignment are performed. Pre -processed frames are fed into a CNN to 280 
+extract spatial features, which are then input into an LSTM to learn temporal dependencies. 281 
+The combined CNN -LSTM model classifies each frame, and an aggregated decision 282 
+decides if the whole video is REAL or FAKE. 283 
+d. Probability Conversion 284 
+The model output on the raw logit level for each frame is passed through a sigmoid  285 
+activation. This takes that logit and translates it into a probability value between 0 and 1; 286 
+in this case, scores  closer to 1 mean a greater likelihood that the frame comes from fake 287 
+video. This probability  serves as an interpretable model -based measure of the model’s 288 
+prediction on each individual frame. Equation 1 is used to calculate the probability.  289 
+
+Sensors 2025, 25, x FOR PEER REVIEW 9 of 22  
+ 
+𝑃𝑖 = 𝜎ሺ𝑥ሻ = 1 ሺ1 + 𝑒−𝑥ሻൗ                                              (1) 290 
+e. Video-Level Classification 291 
+Once it calculates the fake probability per frame, it gathers all scores and integrates them. 292 
+The overall fake likelihood  of the video is computed by taking the average of these 293 
+probabilities. So, this average takes a single decision for the  entire video. Then a 294 
+classification threshold is applied (often set to 0.5). If the mean probability is greater than  295 
+this threshold, we classify the video as FAKE, otherwise REAL. The threshold decision rule 296 
+allows us to easily separate manipulated versus authentic content. 297 
+𝑃 = 1 𝑛ൗ σሺ𝑖 = 1 𝑡𝑜 𝑛ሻ𝑃𝑖                                               (2) 298 
+ 299 
+ 300 
+2.2  Proposed Video Deepfake Detection System 301 
+ 302 
+ 303 
+Fig 5: Block Diagram of the Proposed System for Audio Detection 304 
+ 305 
+o  Proposed System Architecture 306 
+ 307 
+The proposed system automatically detects deepfake audio by combining MFCC for 308 
+spectral feature extraction and LSTM for temporal pattern recognition. This integration 309 
+effectively captures both acoustic characteristics and sequential dependencies, enabling 310 
+accurate classification of audio authenticity.          311 
+This method is designed as a multi -stage pipeline that systematically processes raw audio 312 
+to deliver an accurate classification. The system is developed with the goal of not only 313 
+detecting whether an audio sample is real or fake, but also understanding how synthetic 314 
+speech differs in temporal and spectral structure. It begins by enhancing the audio signal 315 
+to remove unwanted noise and ensure consistent formatting, which is essential for reliable 316 
+
+Sensors 2025, 25, x FOR PEER REVIEW 10 of 22  
+ 
+analysis. The enhanced signal is then transformed into meaningful features using MFCC, 317 
+which captures how humans perceive sound. These features are well -suited for deep 318 
+learning models like LSTM, which are capable of detecting subtle, time-dependent patterns 319 
+in speech. Once the LSTM processes the input, the model outputs a probability indicating 320 
+the likelihood that the audio is fake. This score is compared to a threshold, and the result is 321 
+classified accordingly. Overall, the pipeline offers a powerful, interpretable, and modular 322 
+solution to audio deepfake-detection. 323 
+To enhance the raw audio and make the signal more uniform and reliable for analysis by 324 
+reducing noise and standardizing its temporal structure. A critical transformation that 325 
+converts audio waveforms into compact, informative representations that highlight 326 
+spectral patterns indicative of human speech characteristics. Through the use of an LSTM - 327 
+based deep learning model that can capture temporal dependencies in speech sequences, 328 
+enabling the detection of subtle anomalies typical in deepfake audio. Rather than producing 329 
+a binary output, the model yields a probabilistic prediction, thereby allowing for flexible 330 
+thresholding and enhancing interpretability. The system facilitates real -time, confidence- 331 
+informed classification (REAL or FAKE), making it suitable for deployment in safety - 332 
+critical-environments.[22-24] 333 
+• Mel-Frequency Cepstral Coefficients 334 
+Mel-Frequency Cepstral Coefficients (MFCC) are used to extract meaningful 335 
+features from the audio signal by simulating the way humans perceive sound. After 336 
+preprocessing the audio into short frames, each frame undergoes a Fourier 337 
+Transform to reveal its frequency content, followed by the application of a Mel - 338 
+scale filter bank that emphasizes perceptually important frequencies. The resulting 339 
+energies are logarithmically compressed and transformed using the Discrete 340 
+Cosine Transform (DCT) to produce compact, uncorrelated coefficients. These 341 
+MFCCs form a two -dimensional feature matrix that captures both spectral and 342 
+temporal properties of speech, making them ideal inputs for the LSTM model to 343 
+distinguish between real and fake audio patterns. 344 
+• Long Short-Term Memory (LSTM) 345 
+The LSTM network processes the sequence of MFCC feature vectors and captures 346 
+temporal dependencies in the speech signal. A Bidirectional LSTM (BiLSTM) is 347 
+used to model the audio context from both past and future frames. This helps detect 348 
+unnatural transitions, voice inconsistencies, and temporal anomalies characteristic 349 
+of deepfake audio. The final hidden states from the LSTM are forwarded to dense 350 
+layers for classification . 351 
+ 352 
+Experimental Setup 353 
+To assess the proposed audio deepfake detection system, experiments were conducted on 354 
+a publicly available dataset containing real and synthetically generated audio. After 355 
+standardizing all samples to 16 Hz mono format, MFCC features were extracted and used 356 
+to train a BiLSTM model. The system's performance was evaluated using accuracy, 357 
+precision, recall, and F1-score. 358 
+ 359 
+Dataset 360 
+Sensors 2025, 25, x FOR PEER REVIEW 11 of 22  
+ 
+We used the SceneFake dataset for training and evaluation, which includes real and fake 361 
+audio samples under varied conditions. The audio was standardized to mono 16 kHz 362 
+format. The dataset was split into training, development, and evaluation sets. Its diversity 363 
+in noise, accents, and speaking styles supports reliable performance testing.  364 
+ 365 
+ 366 
+ 367 
+o Proposed Algorithm: 368 
+ 369 
+Fig. 5. Flowchart of the Proposed Deepfake Audio Detection Algorithm . 370 
+ 371 
+ 372 
+ 373 
+ 374 
+ 375 
+ 376 
+ 377 
+ 378 
+ 379 
+    
+Sensors 2025, 25, x FOR PEER REVIEW 12 of 22  
+ 
+A. Preprocessing: 380 
+The preprocessing pipeline for the SceneFake dataset focuses on improving audio quality 381 
+and extracting features crucial for detecting manipulation. It begins with a pre-emphasis 382 
+filter to highlight high -frequency components and reduce noise, followed by Voice 383 
+Activity Detection (VAD)  to remove non -speech segments. The speech is then split into 384 
+25 ms frames with 10 ms stride  and processed using a Hamming window to minimize 385 
+spectral leakage. Amplitude normalization is applied for consistency, with optional steps 386 
+like noise reduction, bandpass filtering, and resampling to 16 kHz as needed.  387 
+The pre-emphasis filter is defined as: 388 
+        𝑦ሺ𝑡ሻ = 𝑥ሺ𝑡ሻ − 𝛼 × 𝑥ሺ𝑡 − 1ሻ                               (3) 389 
+ 390 
+B. Feature Extraction (MFCC): 391 
+Mel-Frequency Cepstral Coefficients (MFCC) are extracted to represent the spectral 392 
+characteristics of audio in a perceptually meaningful way. Each framed signal is 393 
+transformed using FFT, followed by application of a Mel filter bank to mimic human 394 
+auditory perception, calculated as:                                                                           395 
+                        𝑀𝑒𝑙ሺ𝑓ሻ = 2595𝑙𝑜𝑔10ሺ1 + 𝑓
+700ൗ ሻ                         (4)     396 
+                    397 
+The resulting filter bank energies are log -compressed and passed through a Discrete 398 
+Cosine Transform (DCT) to produce the final MFCCs: 399 
+                      𝑀𝐹𝐶𝐶ሺ𝑛ሻ = σ log൫𝑆ሺ𝑘ሻ൯ . cos [𝑛ሺ𝑘 − 0.5ሻ𝜋/𝐾                (5) 400 
+ 401 
+The output is a 2D matrix of shape T×NT \times NT×N, where TTT is the number of frames 402 
+and NNN is typically 13–40 coefficients. 403 
+ 404 
+Fig 6: Workflow of the proposed audio deepfake detection model. 405 
+ 406 
+C. LSTM-Based Classification 407 
+The MFCC feature matrix is fed into a Bidirectional LSTM (BiLSTM) network, which 408 
+captures temporal dependencies in both forward and backward directions. The LSTM 409 
+layers include forget, input, and output gates to manage memory and information flow 410 
+[23]. Dropout is applied for regularization. The temporal features are condensed through 411 
+a dense layer, followed by a sigmoid -activated output layer that produces a probability 412 
+score for detecting fake audio. 413 
+ 414 
+D. Inference and Decision: 415 
+The sigmoid function  transforms logits into probabilities 𝑦 = 1 ÷ ሺ1 + 𝑒−𝑧ሻ , and a 416 
+
+Sensors 2025, 25, x FOR PEER REVIEW 13 of 22  
+ 
+threshold of 0.5  is applied for binary classification. Samples with ŷ >  0.5 are labeled as 417 
+Fake, otherwise Real. 418 
+ 419 
+E. Output and Evaluation: 420 
+The system outputs REAL or FAKE with a confidence score from the sigmoid function, 421 
+aiding interpretability. It correctly classified 6933 fake and 1581 real samples, achieving 422 
+96.95% and 96.85% accuracy , respectively. High precision and recall confirm its 423 
+effectiveness in detecting audio deepfakes. 424 
+ 425 
+ 426 
+ 427 
+ 428 
+3. Results 429 
+3.1.1 Deepfake Video Detection Results 430 
+ 431 
+Finally, based on the threshold value of  average probability, the model outputs  the 432 
+classification label for the video, REAL or FAKE. The algorithm also returns a confidence 433 
+score (i.e., the computed mean probability of being fake) along with the label. This score 434 
+provides insight into how certain the model is in its decision, and can be  used for post - 435 
+hoc analysis or downstream applications. 436 
+Real Video Detection : 437 
+ 438 
+                       Fig. 7. Real Video Detection Output  439 
+Fake Video Detection: 440 
+
+Sensors 2025, 25, x FOR PEER REVIEW 14 of 22  
+ 
+ 441 
+                              Fig. 8. Fake Video Detection Output
+ 442 
+ 443 
+ 444 
+ 445 
+3.1.2. Deepfake Audio Detection Results 446 
+Deepfake Audio Detection: 447 
+The model evaluates the input audio and assigns a label REAL or FAKE based on the 448 
+average probability of it being synthetic. Alongside the label, it provides a confidence 449 
+score indicating the likelihood of the audio being fake. This score reflects the model's 450 
+certainty and can aid in further validation or integration into automated detection systems. 451 
+ 452 
+Real Audio Detection: 453 
+ 454 
+                         Fig. 9. Real Audio Detection Output  455 
+ 456 
+ 457 
+ 458 
+ 459 
+ 460 
+ 461 
+ 462 
+ 463 
+Fake Audio Detection: 464 
+
+Sensors 2025, 25, x FOR PEER REVIEW 15 of 22  
+ 
+ 465 
+                                                Fig. 10. Real Audio Detection Output  466 
+ 467 
+                             3.2 Figures, Tables and Schemes 468 
+                                         469 
+3.2.1 Evaluation Matrix  470 
+ 471 
+            Table1: Evaluation Matrix for Deepfake Video Detection 472 
+ 473 
+ 474 
+ 475 
+      476 
+ 477 
+ 478 
+  479 
+            Table 2: Evaluation Matrix for Deepfake Audio Detection 480 
+ 481 
+ 482 
+ 483 
+ 484 
+ 485 
+ 486 
+ 487 
+ 488 
+ 489 
+The measurements are computed according to normal calculations given as follows:  490 
+𝐴𝑐𝑐𝑢𝑟𝑎𝑐𝑦 =  ሺ𝑇𝑃 +  𝑇𝑁ሻ / ሺ𝑇𝑃 +  𝑇𝑁 +  𝐹𝑃 +  𝐹𝑁ሻ                             (6)  491 
+𝑃𝑟𝑒𝑐𝑖𝑠𝑖𝑜𝑛 =  𝑇𝑃 / ሺ𝑇𝑃 +  𝐹𝑃ሻ                                                (7) 492 
+𝑅𝑒𝑐𝑎𝑙𝑙 =  𝑇𝑃 / ሺ𝑇𝑃 +  𝐹𝑁ሻ                                                   (8)  493 
+𝐹1 − 𝑆𝑐𝑜𝑟𝑒 =  2 ∗ ሺ𝑃𝑟𝑒𝑐𝑖𝑠𝑖𝑜𝑛 ∗  𝑅𝑒𝑐𝑎𝑙𝑙ሻ / ሺ𝑃𝑟𝑒𝑐𝑖𝑠𝑖𝑜𝑛 +  𝑅𝑒𝑐𝑎𝑙𝑙ሻ                  (9) 494 
+ 495 
+ 496 
+ 497 
+3.2.2 Evaluation Results of the Proposed Video Deepfake Detection System: 498 
+Metric Fake Class Real Class 
+Accuracy 92.86% 94.28% 
+Precision 93.14% 93% 
+Recall 93% 95% 
+F1-Score 93.33% 94% 
+Metric Fake Class Real Class 
+Accuracy 96.95% 96.85% 
+Precision 97.81% 92.84% 
+Recall 98.27% 91.07% 
+F1-Score 98.04% 91.95% 
+Sensors 2025, 25, x FOR PEER REVIEW 16 of 22  
+ 
+    499 
+        Fig. 11a. Evaluation Metrics Graph for Real Class                500 
+   501 
+        Fig. 11b. Evaluation Metrics Graph for Fake Class 502 
+ 503 
+ 504 
+3.2.3 Evaluation Results of the Proposed Audio Deepfake Detection System:  505 
+                                    506 
+                                        Fig. 12a. Evaluation Metrics Graph for Real Class                            507 
+
+Sensors 2025, 25, x FOR PEER REVIEW 17 of 22  
+ 
+          508 
+              Fig. 12b. Evaluation Metrics Graph for Real Class                509 
+ 510 
+. 511 
+ 512 
+ 513 
+4. Discussion 514 
+Table 1 presents a broad overview of the performance measurement metrics of the model 515 
+proposed, specifically the two disparate classes of videos that have been classified as Fake 516 
+and Real. The model reflects an excellent degree of classification performance with a 517 
+highly accurate value of 92.86% for the Fake class and an even higher accurate value of 518 
+94.28% for the Real class. Such a high performance says a great deal about the reliability 519 
+of the model in its ability to make correct predictions as a whole. In precision, the model 520 
+shows rates of 93.14% for the Fake class and 93% for the Real class, which also say a great 521 
+deal about the efficiency of the model in reducing the likelihood of false positives in its 522 
+classifications. In the same way, the recall rates, standing at 93% for the Fake class and a 523 
+high rate of 95% for the Real class, say about the efficiency of the model in identifying true 524 
+instances for each class. In addition, the F1 -Scores, computed as the harmonic mean of 525 
+precision and recall, have been computed at 93.33% for the Fake class and 94% for the Real 526 
+class. Such values also say a great deal further about the stability and equilibrium of the 527 
+model's classification performance, affirming its overall efficiency in discriminating 528 
+between the two classes of videos. 529 
+ 530 
+Table 2 The deepfake audio detection model was evaluated using key performance 531 
+metrics across both the Fake and Real classes. The model achieved an accuracy of 96.95% 532 
+for fake audio and 96.85% for real audio, demonstrating a high overall capability to 533 
+correctly classify both synthetic and authentic speech. For the Fake class, a precision of 534 
+97.81% indicates that the majority of audio samples predicted as fake were indeed fake, 535 
+minimizing false positives. The recall of 98.27% reflects the model's effectiveness in 536 
+correctly identifying nearly all actual fake samples, ensuring that very few manipulated 537 
+audios go undetected. These strong precision and recall values resulted in an impressive 538 
+
+Sensors 2025, 25, x FOR PEER REVIEW 18 of 22  
+ 
+F1-score of 98.04%, signifying a well -balanced performance in detecting and accurately 539 
+labeling fake content. On the other hand, for the Real class, the model attained a precision 540 
+of 92.84%, suggesting that some real samples were misclassified as fake. The recall of 91.07% 541 
+shows that a small number of real audio samples were not correctly identified, indicating 542 
+a slightly lower sensitivity to authentic speech. Nonetheless, the F1 -score of 91.95% 543 
+confirms that the model maintains a consistent and dependable performance even in 544 
+detecting real audio. While the model demonstrates strong results for both classes, its 545 
+marginally superior performance on fake audio detection highlights its potential value in 546 
+applications where the primary objective is to detect and mitigate the risks associated with 547 
+synthetic or manipulated speech content. 548 
+Fig. 11a. shows the performance of the classifier on the Real class, where Recall (95.0%) is 549 
+highest, meaning proper identification of real instances, and Precision (93.0%) is 550 
+comparatively lower, meaning some false positives. Accuracy and F1-Score are still equal 551 
+at 94%. 552 
+Fig. 11b. gives Fake class statistics with uniformly good performance on all metrics. 553 
+Particularly, Precision (93.2%) is only slightly higher than Recall (93.0%), showing a well- 554 
+calibrated 555 
+classification. 556 
+Fig, 12a. The model's performance on the Real class shows high Accuracy (96.95%) but 557 
+slightly lower Precision (93.00%) and Recall (91.50%). This indicates good overall 558 
+detection but some challenges in consistently identifying real audio.  559 
+Fig. 12b. The graph shows consistently high performance on the Fake class, with Recall 560 
+peaking at 98.27%. Precision (97.81%) and F1-Score (98.04%) also remain strong, indicating 561 
+reliable detection of synthetic audio. 562 
+ 563 
+ 564 
+5. Conclusions 565 
+This work introduces an effective and scalable deepfake detection framework that targets 566 
+both audio and video modalities with state-of-the-art deep learning methods. Through the 567 
+use of a CNN -LSTM model on face -aligned video frames obtained from datasets like 568 
+FaceForensics++, Celeb-DF, and DFDC, the proposed method effectively identifies spatial 569 
+and temporal inconsistencies with a detection accuracy of 94%. For speech -based forgery 570 
+detection, Mel Frequency Cepstral Coefficients (MFCCs) are fed into a BiLSTM network 571 
+trained on the SceneFake dataset with a high classification accuracy of 98% on different 572 
+signal-to-noise ratios and enhancement conditions. 573 
+The two -modality architecture also exhibits excellent generalization properties among 574 
+manipulation approaches and various input situations. Having the two modules 575 
+consolidated into an end -user accessible web -based interface even further supports the 576 
+practical feasibility of the system to be used in real -world contexts, facilitating immediate 577 
+and accurate deepfake detection through end users. 578 
+This research makes a valuable contribution to the area of multimedia forensics by closing 579 
+the gap between research and deployment, with a robust framework for 580 
+futureextensions.Future improvements can include the use of attention mechanisms, 581 
+Sensors 2025, 25, x FOR PEER REVIEW 19 of 22  
+ 
+ensemble architectures, and sophisticated data augmentation techniques to enhance 582 
+robustness and flexibility. In general, this research highlights the importance of integrating 583 
+spectral and temporal modeling for thorough deepfake detection and opens the door to 584 
+scalable, real-world applications in synthetic media analysis. 585 
+6. Future Scope 586 
+Future work on the DeepShield system will extend to consistently detecting threats in live 587 
+video streams and working toward robustness across varying video qualities and 588 
+conditions. It will also focus on optimized latency and scheduling for  mobile and low - 589 
+latency deployments. Model accuracy can be improved by utilizing sophisticated 590 
+methodologies like CNN with LSTM for video and MFCC  with LSTM for audio using 591 
+transfer learning. Other useful techniques include attention mechanisms (Transformers), 592 
+GANs for  synthetic data generation, multimodal fusion (e.g., audio and video), and, 593 
+sometimes, better anomaly detection using autoencoders that you could check for RNN 594 
+and TCN integration too We further investigate the effectiveness of different structures in 595 
+video (3D CNNs) and audio (CRNNs) domains. This could involve exploring techniques 596 
+such as meta -learning, domain adaptation, and adversarial training. We will further 597 
+investigate ensemble learning and feature fusion across different pretrained models  to 598 
+improve robustness. Finally, a combination of ensuring ethical usage and  collaboration 599 
+with social media platforms and regulatory bodies will be essential as the world combats 600 
+deepfake misinformation. Efforts could be made to reduce the computational cost of the 601 
+system. This could involve exploring techniques such as model compression, 602 
+quantization, and pruning. 603 
+7. Patents 604 
+This work stems from the patent which is co -invented by the authors of this article. The 605 
+patent application is 202421092955, titled “DEEPBLOCKER: Intelligent PrePost 606 
+DeepGuard.” It was filed on 27 November 2024 and published on 27 December 2024 by 607 
+the Indian Patent Office. 608 
+Author Contributions: 609 
+Conceptualization: HOD(Computer Department)  ;  610 
+Methodology, Aakanksha Rameshrao Andhare,Anushri Anil Pillai, Trupti Ganesh 611 
+Jadhav,      Ashwini Arjun Sonawane;  612 
+Software ,Aakanksha Rameshrao Andhare,Anushri Anil Pillai, Trupti Ganesh Jadhav,      613 
+Ashwini Arjun Sonawane; 614 
+Validation ,HOD(Computer Department); 615 
+Formal analysis, HOD(Computer Department); 616 
+Investigation, Aakanksha Rameshrao Andhare,Anushri Anil Pillai, Trupti Ganesh 617 
+Jadhav,      Ashwini Arjun Sonawane;  618 
+Data curation, Aakanksha Rameshrao Andhare,Anushri Anil Pillai, Trupti Ganesh 619 
+Jadhav,      Ashwini Arjun Sonawane;  620 
+Writing—original draft preparation, Anushri Anil Pillai, Trupti Ganesh Jadhav ,Aakank- 621 
+sha Rameshrao Andhare, Ashwini Arjun Sonawane; 622 
+Writing—review , HOD(Computer Department); 623 
+Visualization , HOD(Computer Department); 624 
+Supervision, HOD(Computer Department); 625 
+Sensors 2025, 25, x FOR PEER REVIEW 20 of 22  
+ 
+Project administration, HOD(Computer Department); 626 
+Funding acquisition, Not Applicable. 627 
+All authors have read and agreed to the published version of the manuscript.  628 
+Funding: This research received no external funding 629 
+Institutional Review Board Statement: Not applicable 630 
+Informed Consent Statement: Not applicable 631 
+Data Availability Statement:  The data validating the results of this study may be ob- 632 
+tained from the corresponding author with a reasonable request. No additional datasets 633 
+were created or archived publicly during this study. 634 
+Acknowledgments: While drafting this patent, the authors utilized ChatGPT (OpenAI, 635 
+May 2024 version) to polish the technical phrasing and enhance the overall structure of 636 
+the document. All authors provided multiple rounds of review and revision and accept 637 
+full ownership of the content of this publication. 638 
+Conflicts of Interest: The authors declare no conflicts of interest. 639 
+Abbreviations: 640 
+Abbreviation Full Form 
+CNN Convolutional Neural Network 
+GAN Generative Adversarial Network 
+UI User Interface 
+API Application Programming Interface 
+AI Artificial Intelligence 
+MDPI Multidisciplinary Digital Publishing I nsti-
+tute 
+DFDC Deepfake Detection Challenge 
+GDPR General Data Protection Regulation 
+MFCC 
+ Mel-Frequency Cepstral Coefficients 
+ 
+LSTM                                                           Long Short-Term  
+Sensors 2025, 25, x FOR PEER REVIEW 21 of 22  
+ 
+ 641 
+References 642 
+[1] Y. Li, X. Yang, P. Sun, H. Qi, and S. Lyu, “Celeb-df: A new dataset for deepfake forensics,” 2019, arXiv:1909.12962. 643 
+[2] J. Fletcher, “Deepfakes, artificial intelligence, and some kind of dystopia: The newfaces of online post -fact 644 
+performance,” Theatre J., vol. 70, no. 4, Dec. 2018.  645 
+[3]  A. Ovadya and J. Whittlestone, “Reducing malicious use of synthetic media research: Considerations and 646 
+potential release practices for machine learning,” 2019, arXiv:1907.11274.  647 
+[4]  I. Korshunova, W. Shi, J. Dambre, and L. Theis, “Fast face-swap using convolutional neural networks,” in Proc. 648 
+IEEE Int. Conf. Comput. Vision, Venice, pp. 3697–3705, 2017. 649 
+[5]  I. Goodfellow et al., “Generative adversarial nets,” in Proc. Adv. Neural Inf. Process. Syst., 2014, pp. 2672–2680.  650 
+[6] S.-A. Lu, “faceswap-GAN,” [Online]. Available: https://github.com/ shaoanlu/faceswap-GAN. 651 
+[7] Schwartz, Oscar (12 November 2018). "You thought fake news was bad? Deep fakes are where the truth goes to 652 
+die". The Guardian. 653 
+[8] D. Guera and E. J. Delp, “Deepfake Video Detection Using Recurrent Convolutional Structures,” in Proc. IEEE 654 
+Conf. on Computer Vision and Pattern Recognition Workshops (CVPRW), 2018. 655 
+[9]  B. Fathima, S. T., and E. R. Lason, “Deepfake Detection in Media Files - Audios, Images and Videos,” in 2020 656 
+IEEE Recent Advances in Intelligent Computational Systems (RAICS), 2020. 657 
+[10] Ekraam Sabir, Jiaxin Cheng, Ayush Jaiswal, Wael AbdAlmageed, Iacopo  Masi, Prem                                                                                         658 
+Natarajan,” Recurrent Convolutional Strategies for Face Manipulation Detection in Videos”, In proceeding of 659 
+the IEEE XploreFinal Publication, pp. 80-87, 2018. 660 
+[11] A. Hamza et al., "Deepfake Audio Detection via MFCC Features Using Machine Learning," IEEE Access, vol. 10, 661 
+pp. 134018–134033, 2022. DOI: 10.1109/ACCESS.2022.3231480 662 
+[12]  A. Chintha et al., "Recurrent Convolutional Structures for Audio Spoof and Video Deepfake Detection," IEEE J. 663 
+Sel. Topics Signal Process., vol. 14, no. 5, pp. 1024–1037, Aug. 2020. DOI: 10.1109/JSTSP.2020.2999185 664 
+[13] Chih-Chung Hsu, Yi-Xiu Zhuang, and Chia-Yen Lee,” Deep Fake Image Detection based on Pairwise Learning”, 665 
+MDPI, Applied Science,2020, doi:10.3390/app10010370. 666 
+[14] M. D. Pusparaj, B. S. Kumar, and K. V. Anusha, "SceneFake: A Dataset and Baseline for Audio -Visual Deepfake 667 
+Detection in Realistic Scenarios," in Proc. of the IEEE International Conference on Multimedia and Expo (ICME), 668 
+2022. 669 
+[15] Q. Cao, L. Shen, W. Xie, O. M. Parkhi, and A. Zisserman, “Vggface2: A dataset for recognising faces across pose 670 
+and age,” in Proc. IEEE 13th Int.Conf. Autom. Face Gesture Recognit. (FG 2018). , 2018, pp. 67–74. 671 
+[16] J. Deng, W. Dong, R. Socher, L.-J. Li, K. Li, and L. Fei-Fei, “ImageNet:A large-scale hierarchical image database,” 672 
+in Proc. IEEE Conf. Comput.Vision Pattern Recognit., 2009, pp. 248–255. 673 
+[17] Jawadul H. Bappy, Cody Simons, Lakshmanan Nataraj, B.S. Manjunath,and Amit K. Roy-Chowdhury,” Hybrid 674 
+LSTM and Encoder Decoder Architecture for Detection of Image Forgeries”, IEEE Transaction on Image 675 
+Processing, Volume: 28, Issue:7 ,pp. 1-14, 2019 676 
+[18] Y. Patel et al., "An Improved Dense CNN Architecture for Deepfake Image Detection," IEEE Access, vol. 11, pp. 677 
+22080–22094, 2023. DOI: 10.1109/ACCESS.2023.3251417 678 
+[19] T. T. Nguyen, Q. V. H. Nguyen, D. T. Nguyen, D. T. Nguyen, T. Huynh The, S. Nahavandi, T. T. Nguyen, Q. -V. 679 
+Pham, and C. M. Nguyen, Deep learning for deepfakes creation and detection: A survey, 2019, arXiv:1909.11573. 680 
+[20] F. Tom, M. Jain, and P. Dey, End -to-end audio replay attack detection using deep convolutional networks with 681 
+attention, in Proc. Interspeech, Hyderabad, 2018, pp. 681685. 682 
+Sensors 2025, 25, x FOR PEER REVIEW 22 of 22  
+ 
+[21] J. Khochare, C. Joshi, B. Yenarkar, S. Suratkar, and F. Kazi, A deep learning framework for audio deepfake 683 
+detection, Arabian J. Sci. Eng., vol. 47, pp. 112, Nov. 2021. 684 
+[22] R. Reimao and V. Tzerpos, FoR: A dataset for synthetic speech detection, in Proc. Int. Conf. Speech Technol. 685 
+Hum.-Comput. Dialogue (SpeD), Oct. 2019, pp. 1 10. 686 
+[23] Z. Wu et al., “ASVspoof 2015: The first automatic speaker verification spoofing and countermeasures challenge,” 687 
+in Proc. 16th Annu. Conf. Int.Speech Commun. Assoc., 2015. 688 
+[24] A. van den Oord et al., “WaveNet: A generative model for raw audio,” CoRR, vol. abs/1609.03499, 2016. [Online]. 689 
+Available: http://arxiv.org/abs/1609.03499 690 
+ 691 
