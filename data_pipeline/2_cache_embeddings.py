@@ -151,13 +151,7 @@ if __name__ == "__main__":
                 "label": label
             }, save_path)
 
-            # Save Augmented
-            save_path_aug = os.path.join(out_dir, f"{vid}_aug.pt")
-            torch.save({
-                "spatial": sp_vec_aug,
-                "freq": fr_vec_aug,
-                "label": label
-            }, save_path_aug)
+            # (Removed the buggy augmentation saving that poisoned the dataset)
 
 
     process_and_cache_videos(fake_vids, FAKE_OUT, 1)
