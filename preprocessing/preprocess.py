@@ -182,6 +182,7 @@ def run_preprocessing_video(video_path, frame_interval=10, max_frames=10):
     meta_all = []
 
     frame_idx = 0
+    processed_count = 0
 
     while True:
         ret, frame = cap.read()
@@ -223,10 +224,11 @@ def run_preprocessing_video(video_path, frame_interval=10, max_frames=10):
                 "box": f["box"],
                 "landmarks": f["landmarks"]
             })
+            processed_count += 1
 
         frame_idx += 1
 
-        if max_frames and frame_idx >= max_frames:
+        if max_frames and processed_count >= max_frames:
             break
 
     cap.release()
