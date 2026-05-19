@@ -4,12 +4,13 @@
 torch>=1.9.0
 torchvision>=0.10.0
 torchaudio>=0.9.0
-# tensorflow>=2.8.0
+# tensorflow>=2.8.0  # Commented out: Too large for Streamlit Cloud & unused
 
-# # Computer Vision
-# opencv-python>=4.5.0
-# opencv-contrib-python>=4.5.0
-# mtcnn>=0.1.1
+# Computer Vision
+# opencv-python>=4.5.0          # Commented out: Breaks on Linux/Streamlit Cloud
+# opencv-contrib-python>=4.5.0  # Commented out: Breaks on Linux/Streamlit Cloud
+opencv-python-headless>=4.5.0   # Added: Headless version for Cloud compatibility
+# mtcnn>=0.1.1                  # Commented out: Unused in final pipeline
 Pillow>=8.3.0
 
 # Scientific Computing
@@ -20,32 +21,19 @@ pandas>=1.3.0
 # Machine Learning Tools
 scikit-learn>=1.0.0
 albumentations>=1.1.0
-# imgaug>=0.4.0
-#  imgaug>=0.4.0
+# imgaug>=0.4.0                 # Commented out: Unused
 
-# # Visualization & Analysis
-# matplotlib>=3.5.0
-# seaborn>=0.11.0
-# tensorboard>=2.8.0
-# wandb>=0.13.0
-
-
-
-# # Web Framework (for deployment)
-# flask>=2.2.0
-# fastapi>=0.95.0
-# uvicorn>=0.18.0
 # Visualization & Analysis
-matplotlib>=3.5.0
-seaborn>=0.11.0
-tensorboard>=2.8.0
-wandb>=0.13.0
-
-
+# matplotlib>=3.5.0             # Commented out: Unused in deployment
+# seaborn>=0.11.0               # Commented out: Unused in deployment
+# tensorboard>=2.8.0            # Commented out: Unused in deployment
+# wandb>=0.13.0                 # Commented out: Unused in deployment
 
 # Web Framework (for deployment)
-flask>=2.2.0
-fastapi>=0.95.0
-uvicorn>=0.18.0
+# flask>=2.2.0                  # Commented out: Using Streamlit instead
+# fastapi>=0.95.0               # Commented out: Using Streamlit instead
+# uvicorn>=0.18.0               # Commented out: Using Streamlit instead
+
+# New Additions for App
 streamlit>=1.20.0
 yt-dlp>=2023.0.0
