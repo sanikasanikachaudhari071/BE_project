@@ -52,9 +52,9 @@ if __name__ == "__main__":
     # Simulates Instagram/TikTok compression to improve generalization
     # ========================================================
     aug_pipeline = A.Compose([
-        A.ImageCompression(quality_lower=60, quality_upper=90, p=0.8),
+        A.ImageCompression(quality_range=(60, 90), p=0.8),
         A.GaussianBlur(blur_limit=(3, 5), p=0.3),
-        A.GaussNoise(var_limit=(10.0, 50.0), p=0.3),
+        A.GaussNoise(p=0.3),
         A.HorizontalFlip(p=0.5),
     ])
 
@@ -62,8 +62,8 @@ if __name__ == "__main__":
     freq_train_data = []
     freq_train_labels = []
 
-    # Limit to 1500 sequences per class for FrequencyCNN training
-    min_len = min(len(fake_vids), len(real_vids), 1500)
+    # Limit to 800 sequences per class for FrequencyCNN training to prevent Colab RAM crashes
+    min_len = min(len(fake_vids), len(real_vids), 800)
     sampled_fake = list(fake_vids.keys())[:min_len]
     sampled_real = list(real_vids.keys())[:min_len]
 
