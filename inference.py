@@ -38,8 +38,10 @@ def predict_media(media_path, spatial_model, freq_model, fusion_model):
         return None, "No faces detected in the media."
 
     with torch.no_grad():
-        # Get embeddings
-        sp_vecs = get_spatial_vectors(spatial_np, spatial_model, device)
+        # Get embeddings exactly as they were cached during training (without extra normalization)
+        t_sp = torch.tensor(spatial_np, dtype=torch.float32).permute(0, 3, 1, 2).to(device)
+        sp_vecs = spatial_model(t_sp).cpu()
+        
         fr_vecs = extract_frequency_features(freq_np, freq_model, device)
 
         # Fusion model expects batch dimension
