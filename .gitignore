@@ -67,4 +67,7 @@ frames/
 *.mkv
 videos.csv
 =======
-
+# Virtual Environments
+.venv/
+venv/
+env/
