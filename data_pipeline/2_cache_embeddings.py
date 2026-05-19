@@ -49,7 +49,6 @@ if __name__ == "__main__":
 
     # ========================================================
     # ROBUST SOCIAL MEDIA AUGMENTATION PIPELINE
-    # Simulates Instagram/TikTok compression to improve generalization
     # ========================================================
     aug_pipeline = A.Compose([
         A.ImageCompression(quality_range=(60, 90), p=0.8),
@@ -67,16 +66,13 @@ if __name__ == "__main__":
     sampled_fake = list(fake_vids.keys())[:min_len]
     sampled_real = list(real_vids.keys())[:min_len]
 
-    # Collect BOTH Base and Augmented versions so the model learns compression artifacts
+    # ONLY train FrequencyCNN on pristine, clean images!
+    # (If we train it on compressed images, it destroys the DCT coefficients and the loss gets stuck)
     for vid in sampled_fake:
         for fpath in fake_vids[vid]:
             img = load_face_image(fpath)
             if img is not None:
                 freq_train_data.append(frequency_preprocess(img))
-                freq_train_labels.append(1)
-                
-                aug_img = aug_pipeline(image=img)["image"]
-                freq_train_data.append(frequency_preprocess(aug_img))
                 freq_train_labels.append(1)
 
     for vid in sampled_real:
@@ -84,10 +80,6 @@ if __name__ == "__main__":
             img = load_face_image(fpath)
             if img is not None:
                 freq_train_data.append(frequency_preprocess(img))
-                freq_train_labels.append(0)
-                
-                aug_img = aug_pipeline(image=img)["image"]
-                freq_train_data.append(frequency_preprocess(aug_img))
                 freq_train_labels.append(0)
 
     np_f_train = np.stack(freq_train_data)
