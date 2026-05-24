@@ -5,7 +5,6 @@ from densenet.densenet import SpatialDenseNet, get_spatial_vectors
 from frequencycnn.frequency import FrequencyCNN, extract_frequency_features
 from Transformer.transfromermodel import FusionTransformer
 from preprocessing.preprocess import run_preprocessing_media
-import yt_dlp
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -56,13 +55,3 @@ def predict_media(media_path, spatial_model, freq_model, fusion_model):
         
     return prob, meta
 
-def download_video_from_url(url, output_path="downloaded_video.mp4"):
-    ydl_opts = {
-        'outtmpl': output_path,
-        'format': 'best[ext=mp4]',
-        'quiet': True,
-        'noplaylist': True
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-    return output_path

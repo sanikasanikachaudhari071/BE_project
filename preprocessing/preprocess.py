@@ -138,6 +138,10 @@ def run_preprocessing_multi(image_path):
 
     faces = detect_and_crop_faces(image)
 
+    # Filter out false positives by only keeping the largest face in the image
+    if len(faces) > 1:
+        faces = sorted(faces, key=lambda f: f["box"][2] * f["box"][3], reverse=True)[:1]
+
     # Fallback: If no face is detected, assume the image itself is an already-cropped face!
     if len(faces) == 0:
         faces = [{
