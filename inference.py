@@ -59,7 +59,7 @@ def predict_media(media_path, spatial_model, freq_model, fusion_model):
 def download_video_from_url(url, output_path="downloaded_video.mp4"):
     ydl_opts = {
         'outtmpl': output_path,
-        'format': 'best[ext=mp4]',
+        'format': 'best[height<=480][ext=mp4]/best[ext=mp4]',
         'quiet': True,
         'noplaylist': True
     }
