@@ -1,4 +1,5 @@
 import os
+os.environ['TORCH_HOME'] = '/tmp'
 import torch
 import numpy as np
 from densenet.densenet import SpatialDenseNet, get_spatial_vectors
