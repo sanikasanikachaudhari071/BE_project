@@ -34,9 +34,8 @@ def safe_crop(image, x, y, w, h):
 # ==========================
 # FACE DETECTOR
 # ==========================
-face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
+cascade_path = os.path.join(os.path.dirname(__file__), "haarcascade_frontalface_default.xml")
+face_cascade = cv2.CascadeClassifier(cascade_path)
 def detect_and_crop_faces(image):
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
