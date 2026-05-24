@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import tempfile
 import cv2
-from inference import load_models, predict_media
+from inference import load_models, predict_media, download_video_from_url
 
 # Page config
 st.set_page_config(page_title="Deepfake Detector", page_icon="🕵️", layout="wide")
@@ -54,7 +54,7 @@ if not os.path.exists("freq_model.pth"):
 if not os.path.exists("deepfake_model.pth"):
     st.warning("⚠️ `deepfake_model.pth` not found! Please download it from Colab and place it in the project root.")
 
-option = st.sidebar.selectbox("Choose Input Type", ["Video/Image Upload"])
+option = st.sidebar.selectbox("Choose Input Type", ["Video/Image Upload", "URL"])
 
 def process_and_display(media_path):
     with st.spinner("Analyzing media... This might take a moment."):
@@ -95,4 +95,21 @@ if option == "Video/Image Upload":
         # Cleanup
         if os.path.exists(tfile.name):
             os.unlink(tfile.name)
+
+elif option == "URL":
+    url = st.text_input("Enter Video URL")
+    if url and st.button("Detect Deepfake"):
+        with st.spinner("Downloading video..."):
+            try:
+                temp_video = "temp_dl_video.mp4"
+                if os.path.exists(temp_video):
+                    os.remove(temp_video)
+                download_video_from_url(url, temp_video)
+                st.video(temp_video)
+                process_and_display(temp_video)
+            except Exception as e:
+                st.error(f"Failed to process URL: {str(e)}")
+            finally:
+                if os.path.exists("temp_dl_video.mp4"):
+                    os.remove("temp_dl_video.mp4")
 

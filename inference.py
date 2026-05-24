@@ -1,6 +1,6 @@
 import os
-os.environ['TORCH_HOME'] = '/tmp'
 import torch
+import yt_dlp
 import numpy as np
 from densenet.densenet import SpatialDenseNet, get_spatial_vectors
 from frequencycnn.frequency import FrequencyCNN, extract_frequency_features
@@ -55,4 +55,15 @@ def predict_media(media_path, spatial_model, freq_model, fusion_model):
         prob = torch.sigmoid(out).item()
         
     return prob, meta
+
+def download_video_from_url(url, output_path="downloaded_video.mp4"):
+    ydl_opts = {
+        'outtmpl': output_path,
+        'format': 'best[ext=mp4]',
+        'quiet': True,
+        'noplaylist': True
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+    return output_path
 
