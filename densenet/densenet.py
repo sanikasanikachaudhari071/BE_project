@@ -32,7 +32,15 @@ class SpatialDenseNet(nn.Module):
     def __init__(self, emb_dim=128):
         super().__init__()
 
-        self.backbone = densenet121(weights=DenseNet121_Weights.IMAGENET1K_V1)
+        self.backbone = densenet121(weights=None)
+        
+        import os
+        weights_path = os.path.join(os.path.dirname(__file__), '..', 'densenet121.pth')
+        if os.path.exists(weights_path):
+            self.backbone.load_state_dict(torch.load(weights_path, map_location='cpu'))
+        else:
+            print(f"Warning: {weights_path} not found! Spatial features will be random.")
+
         self.backbone.classifier = nn.Identity()
 
         # 🔥 FREEZE BACKBONE
