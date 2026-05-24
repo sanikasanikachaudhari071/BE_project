@@ -35,9 +35,23 @@ class SpatialDenseNet(nn.Module):
         self.backbone = densenet121(weights=None)
         
         import os
+        import re
         weights_path = os.path.join(os.path.dirname(__file__), '..', 'densenet121.pth')
         if os.path.exists(weights_path):
-            self.backbone.load_state_dict(torch.load(weights_path, map_location='cpu'))
+            state_dict = torch.load(weights_path, map_location='cpu')
+            
+            # Fix keys due to PyTorch versioning differences
+            pattern = re.compile(
+                r'^(.*denselayer\d+\.(?:norm|relu|conv))\.((?:[12])\.(?:weight|bias|running_mean|running_var))$'
+            )
+            for key in list(state_dict.keys()):
+                res = pattern.match(key)
+                if res:
+                    new_key = res.group(1) + res.group(2)
+                    state_dict[new_key] = state_dict[key]
+                    del state_dict[key]
+            
+            self.backbone.load_state_dict(state_dict)
         else:
             print(f"Warning: {weights_path} not found! Spatial features will be random.")
 
