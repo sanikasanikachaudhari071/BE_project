@@ -96,7 +96,7 @@ if option == "Video/Image Upload":
         if os.path.exists(tfile.name):
             os.unlink(tfile.name)
 
-elif option == "URL (YouTube)":
+elif option == "URL":
     url = st.text_input("Enter Video URL")
     if url and st.button("Detect Deepfake"):
         with st.spinner("Downloading video..."):

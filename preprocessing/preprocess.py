@@ -139,6 +139,14 @@ def run_preprocessing_multi(image_path):
 
     faces = detect_and_crop_faces(image)
 
+    # Fallback: If no face is detected, assume the image itself is an already-cropped face!
+    if len(faces) == 0:
+        faces = [{
+            "face": image,
+            "box": (0, 0, image.shape[1], image.shape[0]),
+            "landmarks": {"left_eye": (0, 0), "right_eye": (0, 0)} # Dummy landmarks
+        }]
+
     spatial_outputs = []
     freq_outputs = []
     meta = []

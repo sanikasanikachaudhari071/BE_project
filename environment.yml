@@ -1,0 +1,11 @@
+name: sf_env
+channels:
+  - snowflake
+dependencies:
+  - python=3.11
+  - streamlit
+  - opencv
+  - pytorch
+  - torchvision
+  - numpy
+  - tensorflow
